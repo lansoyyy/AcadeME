@@ -6,6 +6,7 @@ import 'lesson_selection_screen.dart';
 import 'study_groups_screen.dart';
 import 'settings_screen.dart';
 import 'chat_screen.dart';
+import 'schedule_session_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,8 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Widget> pages = [
       const HomeDashboard(),
       LessonSelectionScreen(onBack: _goHome),
-      const Center(child: Text('New Session Screen')), // Placeholder
-      const Center(child: Text('Leaderboard Screen')), // Placeholder
+      FindBuddyScreen(), // Placeholder
+      // const Center(child: Text('Leaderboard Screen')), // Placeholder
       SettingsScreen(onBack: _goHome),
     ];
 
@@ -58,10 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.add_circle_outline),
             label: 'New Session',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Leaderboard',
-          ),
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.bar_chart),
+          //   label: 'Leaderboard',
+          // ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
@@ -142,7 +143,14 @@ class HomeDashboard extends StatelessWidget {
                 icon: Icons.calendar_today,
                 title: 'My Sessions',
                 subtitle: 'View your schedule',
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ScheduleSessionScreen(),
+                    ),
+                  );
+                },
               ),
               _buildMenuCard(
                 context,
@@ -352,7 +360,7 @@ class HomeDashboard extends StatelessWidget {
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
-                  height: 36,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
@@ -365,7 +373,10 @@ class HomeDashboard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    child: const Text('Continue'),
+                    child: const Text(
+                      'Continue',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ],
