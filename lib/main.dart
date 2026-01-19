@@ -1,4 +1,5 @@
-import 'package:academe/screens/home_screen.dart';
+import 'package:academe/screens/onboarding_screen.dart';
+import 'package:academe/utils/theme.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -11,6 +12,11 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'AcadeME', home: const HomeScreen());
+    return MaterialApp(
+      title: 'AcadeME',
+      theme: AppTheme.lightTheme,
+      home: const OnboardingScreen(),
+      debugShowCheckedModeBanner: false,
+    );
   }
 }
