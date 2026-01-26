@@ -1,8 +1,17 @@
+import 'package:academe/firebase_options.dart';
 import 'package:academe/screens/onboarding_screen.dart';
 import 'package:academe/utils/theme.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    name: 'academe-c6406',
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 

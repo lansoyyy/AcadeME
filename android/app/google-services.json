@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "555662535466",
+    "project_id": "academe-c6406",
+    "storage_bucket": "academe-c6406.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:555662535466:android:48c28cd6bf22a7f27a0c53",
+        "android_client_info": {
+          "package_name": "com.example.academe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAurVYLmeAD8lX6ZN-Rs7Yp5DZx4PQjhqw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
