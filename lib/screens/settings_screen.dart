@@ -46,6 +46,7 @@ class SettingsScreen extends StatelessWidget {
                 final name = (profile?.fullName ?? 'Student').trim();
                 final studentId = (profile?.studentId ?? '').trim();
                 final initial = name.isNotEmpty ? name[0].toUpperCase() : 'S';
+                final photoUrl = (profile?.photoUrl ?? '').trim();
 
                 return Container(
                   margin: const EdgeInsets.fromLTRB(
@@ -65,13 +66,18 @@ class SettingsScreen extends StatelessWidget {
                       CircleAvatar(
                         radius: 26,
                         backgroundColor: AppColors.backgroundLight,
-                        child: Text(
-                          initial,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
+                        backgroundImage: photoUrl.isNotEmpty
+                            ? NetworkImage(photoUrl)
+                            : null,
+                        child: photoUrl.isEmpty
+                            ? Text(
+                                initial,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              )
+                            : null,
                       ),
                       const SizedBox(width: 12),
                       Expanded(

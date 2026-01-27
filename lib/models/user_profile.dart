@@ -6,6 +6,7 @@ class UserProfile {
   final String studentId;
   final String birthday;
   final int age;
+  final String photoUrl;
 
   const UserProfile({
     required this.uid,
@@ -13,6 +14,7 @@ class UserProfile {
     required this.studentId,
     required this.birthday,
     required this.age,
+    this.photoUrl = '',
   });
 
   factory UserProfile.fromMap(String uid, Map<String, dynamic> map) {
@@ -24,6 +26,7 @@ class UserProfile {
       age: (map['age'] ?? 0) is int
           ? map['age'] as int
           : int.tryParse('${map['age']}') ?? 0,
+      photoUrl: (map['photoUrl'] ?? '') as String,
     );
   }
 
@@ -33,6 +36,7 @@ class UserProfile {
       'studentId': studentId,
       'birthday': birthday,
       'age': age,
+      'photoUrl': photoUrl,
     };
   }
 

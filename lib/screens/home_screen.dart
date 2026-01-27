@@ -93,6 +93,7 @@ class HomeDashboard extends StatelessWidget {
         final initial = displayName.isNotEmpty
             ? displayName[0].toUpperCase()
             : 'S';
+        final photoUrl = (profile?.photoUrl ?? '').trim();
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(AppConstants.paddingM),
@@ -108,14 +109,19 @@ class HomeDashboard extends StatelessWidget {
                       CircleAvatar(
                         radius: 24,
                         backgroundColor: AppColors.secondary,
-                        child: Text(
-                          initial,
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
+                        backgroundImage: photoUrl.isNotEmpty
+                            ? NetworkImage(photoUrl)
+                            : null,
+                        child: photoUrl.isEmpty
+                            ? Text(
+                                initial,
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              )
+                            : null,
                       ),
                       const SizedBox(width: 8),
                     ],

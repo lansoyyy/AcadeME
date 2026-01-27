@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/user_profile.dart';
+import '../services/profile_image_service.dart';
 import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
@@ -23,6 +26,9 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
   bool _isLoading = false;
 
+  XFile? _pickedPhoto;
+  Uint8List? _pickedPhotoBytes;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -30,6 +36,50 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
     _birthdayController.dispose();
     _ageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.of(context).pop('gallery'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.of(context).pop('camera'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    XFile? file;
+    if (source == 'camera') {
+      file = await ProfileImageService().pickFromCamera();
+    } else {
+      file = await ProfileImageService().pickFromGallery();
+    }
+
+    if (file == null) return;
+
+    final bytes = await file.readAsBytes();
+
+    if (!mounted) return;
+    setState(() {
+      _pickedPhoto = file;
+      _pickedPhotoBytes = bytes;
+    });
   }
 
   Future<void> _onNext() async {
@@ -50,12 +100,21 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
     });
 
     try {
+      String photoUrl = '';
+      if (_pickedPhoto != null) {
+        photoUrl = await ProfileImageService().uploadProfileImage(
+          uid: uid,
+          file: _pickedPhoto!,
+        );
+      }
+
       final profile = UserProfile(
         uid: uid,
         fullName: _nameController.text.trim(),
         studentId: _idController.text.trim(),
         birthday: _birthdayController.text.trim(),
         age: int.tryParse(_ageController.text.trim()) ?? 0,
+        photoUrl: photoUrl,
       );
 
       await UserProfileService().upsertProfile(profile);
@@ -136,12 +195,30 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                 Center(
                   child: Stack(
                     children: [
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.backgroundLight,
+                      GestureDetector(
+                        onTap: _pickPhoto,
+                        child: Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.backgroundLight,
+                            image: _pickedPhotoBytes != null
+                                ? DecorationImage(
+                                    image: MemoryImage(_pickedPhotoBytes!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: _pickedPhotoBytes == null
+                              ? const Center(
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 52,
+                                    color: Colors.black54,
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
                       Positioned(
@@ -153,10 +230,13 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 20,
+                          child: GestureDetector(
+                            onTap: _pickPhoto,
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
