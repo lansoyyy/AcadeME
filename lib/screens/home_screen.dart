@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/user_profile.dart';
+import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import 'find_buddy_screen.dart';
@@ -75,153 +78,180 @@ class HomeDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppConstants.paddingM),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid == null) {
+      return const Center(child: Text('You are not logged in.'));
+    }
+
+    return StreamBuilder<UserProfile?>(
+      stream: UserProfileService().streamProfile(uid),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+        final fullName = (profile?.fullName ?? '').trim();
+        final displayName = fullName.isNotEmpty ? fullName : 'Student';
+        final initial = displayName.isNotEmpty
+            ? displayName[0].toUpperCase()
+            : 'S';
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.paddingM),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: AppColors.secondary,
-                    child: const Icon(Icons.person, color: AppColors.primary),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: AppColors.secondary,
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                   ),
-                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.black,
+                      size: 28,
+                    ),
+                    onPressed: () {},
+                  ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.black,
-                  size: 28,
+              const SizedBox(height: AppConstants.paddingS),
+              Text(
+                'Hello, $displayName!',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
-                onPressed: () {},
               ),
+              const SizedBox(height: AppConstants.paddingL),
+
+              // Grid Menu
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: AppConstants.paddingM,
+                mainAxisSpacing: AppConstants.paddingM,
+                childAspectRatio: 1.1,
+                children: [
+                  _buildMenuCard(
+                    context,
+                    icon: Icons.search,
+                    title: 'Find Study\nBuddy',
+                    subtitle: 'Connect with peers',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FindBuddyScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuCard(
+                    context,
+                    icon: Icons.calendar_today,
+                    title: 'My Sessions',
+                    subtitle: 'View your schedule',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ScheduleSessionScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuCard(
+                    context,
+                    icon: Icons.people,
+                    title: 'Study Groups',
+                    subtitle: 'Collaborate with others',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StudyGroupsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuCard(
+                    context,
+                    icon: Icons.chat_bubble_outline,
+                    title: 'Messages',
+                    subtitle: 'Your conversations',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ChatScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppConstants.paddingXL),
+
+              // Your Progress
+              const Text(
+                'Your Progress',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: AppConstants.paddingM),
+              _buildProgressItem('Weekly Goal', '5/8 sessions', 0.6),
+              const SizedBox(height: AppConstants.paddingM),
+              _buildProgressItem('Subjects Studied', '3/5 subjects', 0.6),
+              const SizedBox(height: AppConstants.paddingXL),
+
+              // Pick Up Where You Left Off
+              const Text(
+                'Pick Up Where You Left Off',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: AppConstants.paddingM),
+              SizedBox(
+                height: 180,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    _buildCourseCard('General\nMathematics', Icons.calculate),
+                    const SizedBox(width: AppConstants.paddingM),
+                    _buildCourseCard('Physics', Icons.science),
+                    // Add more cards as needed
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppConstants.paddingL),
             ],
           ),
-          const SizedBox(height: AppConstants.paddingS),
-          const Text(
-            'Hello, Student!',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppConstants.paddingL),
-
-          // Grid Menu
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: AppConstants.paddingM,
-            mainAxisSpacing: AppConstants.paddingM,
-            childAspectRatio: 1.1,
-            children: [
-              _buildMenuCard(
-                context,
-                icon: Icons.search,
-                title: 'Find Study\nBuddy',
-                subtitle: 'Connect with peers',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const FindBuddyScreen(),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuCard(
-                context,
-                icon: Icons.calendar_today,
-                title: 'My Sessions',
-                subtitle: 'View your schedule',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ScheduleSessionScreen(),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuCard(
-                context,
-                icon: Icons.people,
-                title: 'Study Groups',
-                subtitle: 'Collaborate with others',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const StudyGroupsScreen(),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuCard(
-                context,
-                icon: Icons.chat_bubble_outline,
-                title: 'Messages',
-                subtitle: 'Your conversations',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ChatScreen()),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: AppConstants.paddingXL),
-
-          // Your Progress
-          const Text(
-            'Your Progress',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: AppConstants.paddingM),
-          _buildProgressItem('Weekly Goal', '5/8 sessions', 0.6),
-          const SizedBox(height: AppConstants.paddingM),
-          _buildProgressItem('Subjects Studied', '3/5 subjects', 0.6),
-          const SizedBox(height: AppConstants.paddingXL),
-
-          // Pick Up Where You Left Off
-          const Text(
-            'Pick Up Where You Left Off',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: AppConstants.paddingM),
-          SizedBox(
-            height: 180,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildCourseCard('General\nMathematics', Icons.calculate),
-                const SizedBox(width: AppConstants.paddingM),
-                _buildCourseCard('Physics', Icons.science),
-                // Add more cards as needed
-              ],
-            ),
-          ),
-          const SizedBox(height: AppConstants.paddingL),
-        ],
-      ),
+        );
+      },
     );
   }
 

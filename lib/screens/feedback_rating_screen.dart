@@ -56,9 +56,6 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
                   CircleAvatar(
                     radius: 24,
                     backgroundColor: AppColors.backgroundLight,
-                    backgroundImage: const AssetImage(
-                      'assets/images/avatar_placeholder.png',
-                    ),
                     child: const Icon(
                       Icons.person,
                       color: AppColors.textSecondary,

@@ -1,6 +1,6 @@
 import 'package:academe/firebase_options.dart';
-import 'package:academe/screens/onboarding_screen.dart';
 import 'package:academe/utils/theme.dart';
+import 'package:academe/widgets/auth_gate.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'AcadeME',
       theme: AppTheme.lightTheme,
-      home: const OnboardingScreen(),
+      home: const AuthGate(),
       debugShowCheckedModeBanner: false,
     );
   }

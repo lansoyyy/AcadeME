@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/user_profile.dart';
+import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/custom_button.dart';
-import 'home_screen.dart';
 
 class ProfileCreationScreen extends StatefulWidget {
-  const ProfileCreationScreen({super.key});
+  final bool canGoBack;
+  const ProfileCreationScreen({super.key, this.canGoBack = true});
 
   @override
   State<ProfileCreationScreen> createState() => _ProfileCreationScreenState();
@@ -18,6 +21,8 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
   final TextEditingController _birthdayController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
 
+  bool _isLoading = false;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -27,11 +32,44 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
     super.dispose();
   }
 
-  void _onNext() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+  Future<void> _onNext() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('You are not logged in.')));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final profile = UserProfile(
+        uid: uid,
+        fullName: _nameController.text.trim(),
+        studentId: _idController.text.trim(),
+        birthday: _birthdayController.text.trim(),
+        age: int.tryParse(_ageController.text.trim()) ?? 0,
       );
+
+      await UserProfileService().upsertProfile(profile);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to save profile.')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -57,10 +95,12 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: widget.canGoBack
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
         title: const Text(
           "Let's Get Started",
           style: TextStyle(
@@ -174,6 +214,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                   onPressed: _onNext,
                   fullWidth: true,
                   type: ButtonType.primary,
+                  isLoading: _isLoading,
                 ),
                 const SizedBox(height: AppConstants.paddingL),
               ],
