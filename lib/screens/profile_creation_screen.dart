@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/auth_service.dart';
 import '../models/user_profile.dart';
 import '../services/profile_image_service.dart';
 import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/custom_button.dart';
+import 'auth/login_screen.dart';
 
 class ProfileCreationScreen extends StatefulWidget {
   final bool canGoBack;
@@ -19,18 +21,27 @@ class ProfileCreationScreen extends StatefulWidget {
 
 class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _birthdayController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
 
   bool _isLoading = false;
+  bool _obscure = true;
 
   XFile? _pickedPhoto;
   Uint8List? _pickedPhotoBytes;
 
   @override
   void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameController.dispose();
     _idController.dispose();
     _birthdayController.dispose();
@@ -87,19 +98,29 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
       return;
     }
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('You are not logged in.')));
-      return;
-    }
+    final currentUser = FirebaseAuth.instance.currentUser;
+    String? uid = currentUser?.uid;
 
     setState(() {
       _isLoading = true;
     });
 
     try {
+      if (uid == null) {
+        final credential = await AuthService().register(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+        uid = credential.user?.uid;
+      }
+
+      if (uid == null) {
+        throw FirebaseAuthException(
+          code: 'no-user',
+          message: 'Failed to create account.',
+        );
+      }
+
       String photoUrl = '';
       if (_pickedPhoto != null) {
         photoUrl = await ProfileImageService().uploadProfileImage(
@@ -118,6 +139,14 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
       );
 
       await UserProfileService().upsertProfile(profile);
+
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? 'Failed to create account.')),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -149,6 +178,8 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = FirebaseAuth.instance.currentUser != null;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -178,6 +209,153 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!isLoggedIn) ...[
+                  _buildLabel('Email'),
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your email',
+                      hintStyle: const TextStyle(color: AppColors.textLight),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.paddingM,
+                        vertical: AppConstants.paddingM,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      final v = (value ?? '').trim();
+                      if (v.isEmpty) return 'Email is required';
+                      if (!v.contains('@')) return 'Enter a valid email';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppConstants.paddingM),
+                  _buildLabel('Password'),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscure,
+                    decoration: InputDecoration(
+                      hintText: 'Create a password',
+                      hintStyle: const TextStyle(color: AppColors.textLight),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.paddingM,
+                        vertical: AppConstants.paddingM,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
+                      ),
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _obscure = !_obscure;
+                          });
+                        },
+                        icon: Icon(
+                          _obscure ? Icons.visibility : Icons.visibility_off,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      final v = value ?? '';
+                      if (v.isEmpty) return 'Password is required';
+                      if (v.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppConstants.paddingM),
+                  _buildLabel('Confirm Password'),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    obscureText: _obscure,
+                    decoration: InputDecoration(
+                      hintText: 'Re-enter your password',
+                      hintStyle: const TextStyle(color: AppColors.textLight),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.paddingM,
+                        vertical: AppConstants.paddingM,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusM,
+                        ),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      final v = value ?? '';
+                      if (v.isEmpty) return 'Confirm your password';
+                      if (v != _passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppConstants.paddingXL),
+                ],
+
                 // Progress Indicator
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -290,13 +468,34 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
                 // Next Button
                 CustomButton(
-                  text: 'Next',
+                  text: isLoggedIn ? 'Next' : 'Create Account',
                   onPressed: _onNext,
                   fullWidth: true,
                   type: ButtonType.primary,
                   isLoading: _isLoading,
                 ),
                 const SizedBox(height: AppConstants.paddingL),
+
+                if (!isLoggedIn)
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Already have an account? Login',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
