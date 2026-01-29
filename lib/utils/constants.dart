@@ -56,7 +56,7 @@ class AppConstants {
   static const List<String> supportedLanguages = [
     'English',
     'Filipino',
-    'Cebuano'
+    'Cebuano',
   ];
 
   // Adherence Thresholds
@@ -106,9 +106,7 @@ class AppConstants {
   static const String userTypeAdmin = 'admin';
 
   // Grade Levels
-  static const List<String> gradeLevels = [
-    'Grade 9',
-  ];
+  static const List<String> gradeLevels = ['Grade 9'];
 
   // Subjects
   static const List<String> subjects = [
@@ -116,6 +114,294 @@ class AppConstants {
     'Chemistry',
     'Physics',
     'Earth Science',
+  ];
+
+  static const List<Map<String, String>> shsCurriculumSubjects = [
+    {
+      'code': 'COR 011',
+      'title': '21st Century Literature from the Philippines and the World',
+      'type': 'Core',
+    },
+    {'code': 'ABM 007', 'title': 'Applied Economics', 'type': 'Specialized'},
+    {
+      'code': 'HOM 001',
+      'title': 'Attractions and Theme Parks (NC II)',
+      'type': 'Specialized',
+    },
+    {'code': 'STM 002', 'title': 'Basic Calculus', 'type': 'Specialized'},
+    {
+      'code': 'HOM 002',
+      'title': 'Bread and Pastry Production (NC II)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ABM 009',
+      'title': 'Business Enterprise Simulation',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ABM 008',
+      'title': 'Business Ethics and Social Responsibility',
+      'type': 'Specialized',
+    },
+    {'code': 'ABM 004', 'title': 'Business Finance', 'type': 'Specialized'},
+    {'code': 'ABM 005', 'title': 'Business Mathematics', 'type': 'Specialized'},
+    {
+      'code': 'SOC 004',
+      'title': 'Community Engagement, Solidarity, and Citizenship',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ICT 001',
+      'title': 'Computer Programming (NC IV)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ICT 010',
+      'title': 'Computer Programming (Part 1)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ICT 009',
+      'title': 'Computer Programming (Part 2)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'COR 012',
+      'title': 'Contemporary Philippine Arts from the Regions',
+      'type': 'Core',
+    },
+    {'code': 'HUM 002', 'title': 'Creative Nonfiction', 'type': 'Specialized'},
+    {'code': 'HUM 001', 'title': 'Creative Writing', 'type': 'Specialized'},
+    {'code': 'SPX 001', 'title': 'Criminology Elective', 'type': 'Specialized'},
+    {
+      'code': 'SPX 003',
+      'title': 'Culminating Activity in Criminology',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'SPX 004',
+      'title': 'Culminating Activity in Education',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'SPX 005',
+      'title': 'Culminating Activity in General Academics',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'SPX 008',
+      'title': 'Culminating Activity in Health',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'SPX 009',
+      'title': 'Culminating Activity in Hospitality and Tourism (Academic)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'HOM 008',
+      'title': 'Culminating Activity in Hospitality and Tourism (TVL)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'SPX 006',
+      'title': 'Culminating Activity in Humanities and Social Sciences',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ICT 002',
+      'title':
+          'Culminating Activity in Information and Communications Technology',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'SPX 007',
+      'title': 'Culminating Activity in Information Technology',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'COR 010',
+      'title': 'Disaster Readiness and Risk Reduction',
+      'type': 'Core',
+    },
+    {
+      'code': 'SOC 002',
+      'title': 'Disciplines and Ideas in the Applied Social Sciences',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'SOC 001',
+      'title': 'Disciplines and Ideas in the Social Sciences',
+      'type': 'Specialized',
+    },
+    {'code': 'COR 007', 'title': 'Earth and Life Science', 'type': 'Core'},
+    {'code': 'COR 008', 'title': 'Earth Science', 'type': 'Core'},
+    {'code': 'APP 001', 'title': 'Empowerment Technologies', 'type': 'Applied'},
+    {
+      'code': 'APP 002',
+      'title': 'English for Academic and Professional Purposes',
+      'type': 'Applied',
+    },
+    {'code': 'APP 004', 'title': 'Entrepreneurship', 'type': 'Applied'},
+    {
+      'code': 'APP 003',
+      'title': 'Filipino sa Piling Larangan',
+      'type': 'Applied',
+    },
+    {
+      'code': 'HOM 003',
+      'title': 'Food and Beverage Services (NC II)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ABM 002',
+      'title': 'Fundamentals of Accountancy, Business and Management 1',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'ABM 003',
+      'title': 'Fundamentals of Accountancy, Business and Management 2',
+      'type': 'Specialized',
+    },
+    {'code': 'STM 007', 'title': 'General Biology 1', 'type': 'Specialized'},
+    {'code': 'STM 008', 'title': 'General Biology 2', 'type': 'Specialized'},
+    {'code': 'STM 005', 'title': 'General Chemistry 1', 'type': 'Specialized'},
+    {'code': 'STM 006', 'title': 'General Chemistry 2', 'type': 'Specialized'},
+    {'code': 'COR 005', 'title': 'General Mathematics', 'type': 'Core'},
+    {'code': 'STM 003', 'title': 'General Physics 1', 'type': 'Specialized'},
+    {'code': 'STM 004', 'title': 'General Physics 2', 'type': 'Specialized'},
+    {'code': 'HOM 004', 'title': 'Housekeeping (NC II)', 'type': 'Specialized'},
+    {
+      'code': 'APP 007',
+      'title': 'Inquiries, Investigations, and Immersion',
+      'type': 'Applied',
+    },
+    {
+      'code': 'COR 015',
+      'title': 'Introduction to the Philosophy of the Human Person',
+      'type': 'Core',
+    },
+    {
+      'code': 'HUM 003',
+      'title': 'Introduction to World Religions and Belief Systems',
+      'type': 'Specialized',
+    },
+    {'code': 'SPX 002', 'title': 'IT Elective', 'type': 'Specialized'},
+    {
+      'code': 'COR 003',
+      'title': 'Komunikasyon at Pananaliksik sa Wika at Kulturang Filipino',
+      'type': 'Core',
+    },
+    {
+      'code': 'HOM 005',
+      'title': 'Local Guiding Services (NC II)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'COR 016',
+      'title': 'Media and Information Literacy',
+      'type': 'Core',
+    },
+    {
+      'code': 'COR 001',
+      'title': 'Oral Communication in Context',
+      'type': 'Core',
+    },
+    {
+      'code': 'ABM 001',
+      'title': 'Organization and Management',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'COR 004',
+      'title':
+          "Pagbasa at Pagsusuri ng Iba't Ibang Teksto Tungo sa Pananaliksik",
+      'type': 'Core',
+    },
+    {'code': 'COR 014', 'title': 'Personal Development', 'type': 'Core'},
+    {
+      'code': 'SOC 003',
+      'title': 'Philippine Politics and Governance',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'COR 017',
+      'title': 'Physical Education and Health 1',
+      'type': 'Core',
+    },
+    {
+      'code': 'COR 018',
+      'title': 'Physical Education and Health 2',
+      'type': 'Core',
+    },
+    {
+      'code': 'COR 019',
+      'title': 'Physical Education and Health 3',
+      'type': 'Core',
+    },
+    {
+      'code': 'COR 020',
+      'title': 'Physical Education and Health 4',
+      'type': 'Core',
+    },
+    {'code': 'COR 009', 'title': 'Physical Science', 'type': 'Core'},
+    {'code': 'APP 005', 'title': 'Practical Research 1', 'type': 'Applied'},
+    {'code': 'APP 006', 'title': 'Practical Research 2', 'type': 'Applied'},
+    {'code': 'STM 001', 'title': 'Pre-Calculus', 'type': 'Specialized'},
+    {
+      'code': 'ABM 006',
+      'title': 'Principles of Marketing',
+      'type': 'Specialized',
+    },
+    {'code': 'COR 002', 'title': 'Reading and Writing Skills', 'type': 'Core'},
+    {
+      'code': 'STM 009',
+      'title': 'Research in Science, Technology, Engineering, and Mathematics',
+      'type': 'Specialized',
+    },
+    {'code': 'SPO 001', 'title': 'Safety and First Aid', 'type': 'Specialized'},
+    {
+      'code': 'SSP 001',
+      'title': 'SHS Student Success Program 1',
+      'type': 'Program',
+    },
+    {
+      'code': 'SSP 002',
+      'title': 'SHS Student Success Program 2',
+      'type': 'Program',
+    },
+    {
+      'code': 'SSP 003',
+      'title': 'SHS Student Success Program 3',
+      'type': 'Program',
+    },
+    {
+      'code': 'SSP 004',
+      'title': 'SHS Student Success Program 4',
+      'type': 'Program',
+    },
+    {'code': 'COR 006', 'title': 'Statistics and Probability', 'type': 'Core'},
+    {
+      'code': 'HOM 006',
+      'title': 'Tourism Promotion Services (NC II)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'HOM 007',
+      'title': 'Travel Services (NC II)',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'HUM 004',
+      'title': 'Trends, Networks, and Critical Thinking in the 21st Century',
+      'type': 'Specialized',
+    },
+    {
+      'code': 'COR 013',
+      'title': 'Understanding Culture, Society, and Politics',
+      'type': 'Core',
+    },
   ];
 
   // Grade 9 Lessons with AR Items
@@ -143,7 +429,7 @@ class AppConstants {
       'arItems': [
         'Fault Line Models',
         'Seismic Wave Animation',
-        'Earthquake Intensity Map'
+        'Earthquake Intensity Map',
       ],
       'icon': Icons.speed_outlined,
       'color': 'earthScience',
@@ -159,7 +445,7 @@ class AppConstants {
       'arItems': [
         'Climate Graphs',
         'Atmospheric Layers',
-        'Weather System Simulation'
+        'Weather System Simulation',
       ],
       'icon': Icons.cloud,
       'color': 'earthScience',
@@ -175,7 +461,7 @@ class AppConstants {
       'arItems': [
         'Night Sky Map',
         'Constellation Lines',
-        'Star Information Cards'
+        'Star Information Cards',
       ],
       'icon': Icons.star,
       'color': 'earthScience',
@@ -191,7 +477,7 @@ class AppConstants {
       'arItems': [
         'Energy Transformations',
         'Work Done Simulations',
-        'Energy Bar Charts'
+        'Energy Bar Charts',
       ],
       'icon': Icons.bolt,
       'color': 'physics',
@@ -207,7 +493,7 @@ class AppConstants {
       'arItems': [
         'Force Diagrams',
         'Push and Pull Interactions',
-        'Balanced vs Unbalanced Forces'
+        'Balanced vs Unbalanced Forces',
       ],
       'icon': Icons.arrow_upward,
       'color': 'physics',
@@ -223,7 +509,7 @@ class AppConstants {
       'arItems': [
         'Motion Graphs',
         'Moving Object Models',
-        'Speed and Acceleration Sliders'
+        'Speed and Acceleration Sliders',
       ],
       'icon': Icons.directions_run,
       'color': 'physics',
@@ -239,7 +525,7 @@ class AppConstants {
       'arItems': [
         'Circuit Builder',
         'Current Flow Animation',
-        'Series vs Parallel Circuits'
+        'Series vs Parallel Circuits',
       ],
       'icon': Icons.bolt,
       'color': 'physics',
@@ -255,7 +541,7 @@ class AppConstants {
       'arItems': [
         'Wave Interference',
         'Sound Wave Visualizer',
-        'Light Spectrum'
+        'Light Spectrum',
       ],
       'icon': Icons.graphic_eq,
       'color': 'physics',

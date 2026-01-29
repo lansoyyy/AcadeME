@@ -13,36 +13,56 @@ class LessonSelectionScreen extends StatefulWidget {
 class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _lessons = [
-    {
-      'title': 'General Mathematics',
-      'type': 'Core Subject',
-      'icon': Icons.calculate_outlined, // Placeholder for image
-      'color': Colors.white,
-    },
-    {
-      'title': 'Oral Communication',
-      'type': 'Core Subject',
-      'icon': Icons.record_voice_over_outlined, // Placeholder for image
-      'color': AppColors.backgroundLight, // Selected-ish
-      'isSelected': true,
-    },
-    {
-      'title': 'Earth and Life Science',
-      'type': 'Core Subject',
-      'icon': Icons.public, // Placeholder for image
-      'color': Colors.white,
-    },
-    {
-      'title': 'Physical Education',
-      'type': 'Core Subject',
-      'icon': Icons.sports_handball, // Placeholder for image
-      'color': Colors.white,
-    },
-  ];
+  String _selectedCode = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  IconData _iconForType(String type) {
+    switch (type) {
+      case 'Core':
+        return Icons.menu_book_outlined;
+      case 'Applied':
+        return Icons.lightbulb_outline;
+      case 'Program':
+        return Icons.school_outlined;
+      case 'Specialized':
+      default:
+        return Icons.auto_stories_outlined;
+    }
+  }
+
+  String _labelForType(String type) {
+    switch (type) {
+      case 'Core':
+        return 'Core Subject';
+      case 'Applied':
+        return 'Applied Subject';
+      case 'Program':
+        return 'Program';
+      case 'Specialized':
+      default:
+        return 'Specialized';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+    final subjects = AppConstants.shsCurriculumSubjects.where((item) {
+      final code = (item['code'] ?? '').toLowerCase();
+      final title = (item['title'] ?? '').toLowerCase();
+      final type = (item['type'] ?? '').toLowerCase();
+
+      if (query.isEmpty) return true;
+      return code.contains(query) ||
+          title.contains(query) ||
+          type.contains(query);
+    }).toList();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -71,6 +91,7 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
             // Search Bar
             TextField(
               controller: _searchController,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Search for a subject...',
                 prefixIcon: const Icon(
@@ -106,13 +127,19 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
                   mainAxisSpacing: AppConstants.paddingM,
                   childAspectRatio: 0.8,
                 ),
-                itemCount: _lessons.length,
+                itemCount: subjects.length,
                 itemBuilder: (context, index) {
-                  final lesson = _lessons[index];
-                  final isSelected = lesson['isSelected'] == true;
+                  final lesson = subjects[index];
+                  final code = (lesson['code'] ?? '').trim();
+                  final title = (lesson['title'] ?? '').trim();
+                  final type = (lesson['type'] ?? '').trim();
+                  final isSelected = _selectedCode == code && code.isNotEmpty;
+
                   return GestureDetector(
                     onTap: () {
-                      // Select lesson logic
+                      setState(() {
+                        _selectedCode = code;
+                      });
                     },
                     child: Container(
                       padding: const EdgeInsets.all(AppConstants.paddingM),
@@ -140,7 +167,7 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              lesson['icon'],
+                              _iconForType(type),
                               size: 40,
                               color: isSelected
                                   ? AppColors.primary
@@ -149,7 +176,7 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
                           ),
                           const SizedBox(height: AppConstants.paddingM),
                           Text(
-                            lesson['title'],
+                            title,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 16,
@@ -161,7 +188,7 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            lesson['type'],
+                            '${_labelForType(type)}${code.isNotEmpty ? ' • $code' : ''}',
                             style: TextStyle(
                               fontSize: 12,
                               color: isSelected

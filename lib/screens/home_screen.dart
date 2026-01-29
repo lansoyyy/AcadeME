@@ -246,9 +246,15 @@ class HomeDashboard extends StatelessWidget {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    _buildCourseCard('General\nMathematics', Icons.calculate),
+                    _buildCourseCard(
+                      'COR 005\nGeneral Mathematics',
+                      Icons.calculate,
+                    ),
                     const SizedBox(width: AppConstants.paddingM),
-                    _buildCourseCard('Physics', Icons.science),
+                    _buildCourseCard(
+                      'STM 003\nGeneral Physics 1',
+                      Icons.science,
+                    ),
                     // Add more cards as needed
                   ],
                 ),

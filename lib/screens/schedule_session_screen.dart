@@ -130,7 +130,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
             ),
             _buildSessionCard(
               name: 'Juan dela Cruz',
-              subject: 'Practical Research',
+              subject: 'Practical Research 1',
               dateTime: 'Nov 2, 2024 at 10:30 AM',
               status: 'Pending',
               statusColor: AppColors.warning,
@@ -377,7 +377,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
                       ),
                     ),
                     Text(
-                      'Physics 1',
+                      'General Physics 1',
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
