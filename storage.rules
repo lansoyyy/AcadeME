@@ -1,0 +1,40 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Profile photos: profile_photos/{uid}.jpg
+    match /profile_photos/{userId} {
+      // Anyone authenticated can view profile photos
+      allow read: if isAuthenticated();
+      // Only owner can upload their own photo
+      allow write: if isOwner(userId);
+    }
+
+    // Chat attachments: chat_attachments/{conversationId}/{messageId}/{filename}
+    match /chat_attachments/{conversationId}/{messageId}/{fileName} {
+      // Only conversation participants can read attachments
+      allow read: if isAuthenticated()
+        && firestore.get(/databases/(default)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]);
+      
+      // Only conversation participants can upload attachments
+      allow write: if isAuthenticated()
+        && firestore.get(/databases/(default)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]);
+    }
+
+    // Study session attachments
+    match /session_attachments/{sessionId}/{fileName} {
+      allow read: if isAuthenticated()
+        && firestore.get(/databases/(default)/documents/studySessions/$(sessionId)).data.participants.hasAny([request.auth.uid]);
+      allow write: if isAuthenticated()
+        && firestore.get(/databases/(default)/documents/studySessions/$(sessionId)).data.participants.hasAny([request.auth.uid]);
+    }
+  }
+}

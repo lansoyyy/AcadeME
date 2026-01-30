@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
+import '../models/user_profile.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/custom_button.dart';
-import '../screens/chat_screen.dart'; // Will implement next
+import '../screens/chat_screen.dart';
 
 class MatchDialog extends StatelessWidget {
-  const MatchDialog({super.key});
+  final UserProfile otherUser;
+  final String conversationId;
+
+  const MatchDialog({
+    super.key,
+    required this.otherUser,
+    required this.conversationId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,17 +60,25 @@ class MatchDialog extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 40,
                       backgroundColor: AppColors.backgroundLight,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: AppColors.primary,
-                          size: 40,
-                        ),
-                      ),
+                      backgroundImage: otherUser.photoUrl.isNotEmpty
+                          ? NetworkImage(otherUser.photoUrl)
+                          : null,
+                      child: otherUser.photoUrl.isEmpty
+                          ? Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 3,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                color: AppColors.primary,
+                                size: 40,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                   // Heart/Match Icon in middle? Design doesn't show one explicitly overlapping,
@@ -84,20 +100,28 @@ class MatchDialog extends StatelessWidget {
             ),
             const SizedBox(height: AppConstants.paddingS),
 
-            const Text(
-              "You and Maria are now study buddies.",
+            Text(
+              'You and ${otherUser.fullName} are now study buddies.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: AppConstants.paddingXL),
 
             CustomButton(
               text: 'Start Chat',
               onPressed: () {
-                Navigator.pop(context); // Close dialog
+                Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ChatScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      conversationId: conversationId,
+                      otherUser: otherUser,
+                    ),
+                  ),
                 );
               },
               fullWidth: true,

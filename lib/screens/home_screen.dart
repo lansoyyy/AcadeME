@@ -8,7 +8,7 @@ import 'find_buddy_screen.dart';
 import 'lesson_selection_screen.dart';
 import 'study_groups_screen.dart';
 import 'settings_screen.dart';
-import 'chat_screen.dart';
+import 'matches_list_screen.dart';
 import 'schedule_session_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -207,7 +207,7 @@ class HomeDashboard extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ChatScreen(),
+                          builder: (context) => const MatchesListScreen(),
                         ),
                       );
                     },

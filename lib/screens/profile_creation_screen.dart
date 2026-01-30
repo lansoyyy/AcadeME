@@ -30,6 +30,14 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _birthdayController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
+
+  String _selectedTrack = '';
+  int _selectedGradeLevel = 11;
+  final List<String> _selectedSubjects = [];
+
+  final List<String> _tracks = ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
+  final List<int> _gradeLevels = [11, 12];
 
   bool _isLoading = false;
   bool _obscure = true;
@@ -46,6 +54,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
     _idController.dispose();
     _birthdayController.dispose();
     _ageController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -136,6 +145,13 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
         birthday: _birthdayController.text.trim(),
         age: int.tryParse(_ageController.text.trim()) ?? 0,
         photoUrl: photoUrl,
+        track: _selectedTrack,
+        gradeLevel: _selectedGradeLevel,
+        subjectsInterested: _selectedSubjects,
+        bio: _bioController.text.trim(),
+        isDiscoverable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       await UserProfileService().upsertProfile(profile);
@@ -464,6 +480,90 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                   hint: 'Enter your age',
                   keyboardType: TextInputType.number,
                 ),
+                const SizedBox(height: AppConstants.paddingM),
+
+                // Track Selection
+                _buildLabel('Track'),
+                _buildDropdownField<String>(
+                  value: _selectedTrack.isEmpty ? null : _selectedTrack,
+                  hint: 'Select your track',
+                  items: _tracks,
+                  onChanged: (value) {
+                    setState(() => _selectedTrack = value ?? '');
+                  },
+                ),
+                const SizedBox(height: AppConstants.paddingM),
+
+                // Grade Level Selection
+                _buildLabel('Grade Level'),
+                _buildDropdownField<int>(
+                  value: _selectedGradeLevel,
+                  hint: 'Select grade level',
+                  items: _gradeLevels,
+                  onChanged: (value) {
+                    setState(() => _selectedGradeLevel = value ?? 11);
+                  },
+                ),
+                const SizedBox(height: AppConstants.paddingM),
+
+                // Bio
+                _buildLabel('Bio'),
+                TextFormField(
+                  controller: _bioController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText:
+                        'Tell us about yourself and what you\'re looking for...',
+                    hintStyle: const TextStyle(color: AppColors.textLight),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.all(AppConstants.paddingM),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppConstants.paddingM),
+
+                // Subjects Interested
+                _buildLabel('Subjects Interested In'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: AppConstants.shsCurriculumSubjects.take(20).map((
+                    subject,
+                  ) {
+                    final title = subject['title'] ?? '';
+                    final isSelected = _selectedSubjects.contains(title);
+                    return FilterChip(
+                      label: Text(title),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedSubjects.add(title);
+                          } else {
+                            _selectedSubjects.remove(title);
+                          }
+                        });
+                      },
+                      selectedColor: AppColors.primary.withOpacity(0.2),
+                      checkmarkColor: AppColors.primary,
+                    );
+                  }).toList(),
+                ),
                 const SizedBox(height: AppConstants.paddingXL),
 
                 // Next Button
@@ -569,6 +669,36 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
         }
         return null;
       },
+    );
+  }
+
+  Widget _buildDropdownField<T>({
+    required T? value,
+    required String hint,
+    required List<T> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingM),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppConstants.radiusM),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          hint: Text(hint, style: const TextStyle(color: AppColors.textLight)),
+          items: items.map((item) {
+            return DropdownMenuItem<T>(
+              value: item,
+              child: Text(item.toString()),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
     );
   }
 }
