@@ -4,6 +4,7 @@ import '../models/user_profile.dart';
 import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
+import '../widgets/profile_completeness_gate.dart';
 import 'find_buddy_screen.dart';
 import 'lesson_selection_screen.dart';
 import 'study_groups_screen.dart';
@@ -165,7 +166,9 @@ class HomeDashboard extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const FindBuddyScreen(),
+                          builder: (context) => const ProfileCompletenessGate(
+                            child: FindBuddyScreen(),
+                          ),
                         ),
                       );
                     },

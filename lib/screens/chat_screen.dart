@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/user_profile.dart';
 import '../services/conversation_service.dart';
+import '../services/chat_media_service.dart';
+import '../services/swipe_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 
@@ -22,12 +25,14 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final ConversationService _conversationService = ConversationService();
+  final ChatMediaService _mediaService = ChatMediaService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
   String? _currentUid;
   bool _isSending = false;
+  bool _isUploadingImage = false;
   List<DocumentSnapshot<Map<String, dynamic>>> _messages = [];
 
   @override
@@ -250,11 +255,16 @@ class _ChatScreenState extends State<ChatScreen> {
     final senderId = data['senderId'] as String;
     final type = data['type'] as String;
     final text = data['text'] as String?;
+    final mediaUrl = data['mediaUrl'] as String?;
     final isMe = senderId == _currentUid;
     final isSystem = type == 'system';
 
     if (isSystem) {
       return _buildSystemMessage(text ?? '');
+    }
+
+    if (type == 'image' && mediaUrl != null) {
+      return _buildImageMessage(mediaUrl, isMe);
     }
 
     return Padding(
@@ -326,6 +336,118 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildImageMessage(String imageUrl, bool isMe) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isMe) ...[
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.backgroundLight,
+              backgroundImage: widget.otherUser.photoUrl.isNotEmpty
+                  ? NetworkImage(widget.otherUser.photoUrl)
+                  : null,
+              child: widget.otherUser.photoUrl.isEmpty
+                  ? const Icon(Icons.person, color: AppColors.primary, size: 16)
+                  : null,
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                if (!isMe)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0, left: 4),
+                    child: Text(
+                      widget.otherUser.fullName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                GestureDetector(
+                  onTap: () => _showFullImage(imageUrl),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.6,
+                      maxHeight: 200,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
+                        bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                      ),
+                      boxShadow: [
+                        if (!isMe)
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 150,
+                          height: 150,
+                          color: AppColors.backgroundLight,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 150,
+                          height: 150,
+                          color: AppColors.backgroundLight,
+                          child: const Center(
+                            child: Icon(Icons.error, color: AppColors.error),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Image.network(imageUrl),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSystemMessage(String text) {
     return Center(
       child: Container(
@@ -362,6 +484,33 @@ class _ChatScreenState extends State<ChatScreen> {
       child: SafeArea(
         child: Row(
           children: [
+            // Attachment button
+            GestureDetector(
+              onTap: _isUploadingImage ? null : _showAttachmentOptions,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  shape: BoxShape.circle,
+                ),
+                child: _isUploadingImage
+                    ? const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.add_photo_alternate_outlined,
+                        color: AppColors.primary,
+                      ),
+              ),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: TextField(
                 controller: _messageController,
@@ -385,12 +534,12 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const SizedBox(width: 8),
             GestureDetector(
-              onTap: _isSending ? null : _sendMessage,
+              onTap: (_isSending || _isUploadingImage) ? null : _sendMessage,
               child: Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isSending ? AppColors.textLight : AppColors.primary,
+                  color: (_isSending || _isUploadingImage) ? AppColors.textLight : AppColors.primary,
                   shape: BoxShape.circle,
                 ),
                 child: _isSending
@@ -413,6 +562,81 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _sendImage(fromCamera: false);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Take a Photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _sendImage(fromCamera: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.cancel, color: AppColors.textLight),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendImage({required bool fromCamera}) async {
+    if (_currentUid == null || _isUploadingImage) return;
+
+    setState(() => _isUploadingImage = true);
+
+    try {
+      // Pick image
+      final XFile? image = fromCamera
+          ? await _mediaService.takePhoto()
+          : await _mediaService.pickImageFromGallery();
+
+      if (image == null) {
+        setState(() => _isUploadingImage = false);
+        return;
+      }
+
+      // Upload image
+      final String imageUrl = await _mediaService.uploadImage(
+        conversationId: widget.conversationId,
+        file: image,
+      );
+
+      // Send image message
+      await _conversationService.sendImageMessage(
+        conversationId: widget.conversationId,
+        senderId: _currentUid!,
+        imageUrl: imageUrl,
+      );
+
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send image: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
+    }
+  }
+
   void _showReportDialog() {
     final reasons = ['Inappropriate content', 'Harassment', 'Fake profile', 'Spam', 'Other'];
     showDialog(
@@ -421,12 +645,29 @@ class _ChatScreenState extends State<ChatScreen> {
         title: const Text('Report User'),
         children: reasons.map((reason) {
           return SimpleDialogOption(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement report via SwipeService
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Report submitted')),
-              );
+              if (_currentUid != null) {
+                try {
+                  await SwipeService().reportUser(
+                    reporterUid: _currentUid!,
+                    reportedUid: widget.otherUser.uid,
+                    reason: reason,
+                    conversationId: widget.conversationId,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Report submitted')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error submitting report: $e')),
+                    );
+                  }
+                }
+              }
             },
             child: Text(reason),
           );
@@ -447,13 +688,28 @@ class _ChatScreenState extends State<ChatScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement block via SwipeService
-              Navigator.pop(context); // Go back to matches list
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${widget.otherUser.fullName} blocked')),
-              );
+              if (_currentUid != null) {
+                try {
+                  await SwipeService().blockUser(
+                    uid: _currentUid!,
+                    blockedUid: widget.otherUser.uid,
+                  );
+                  if (mounted) {
+                    Navigator.pop(context); // Go back to matches list
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${widget.otherUser.fullName} blocked')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error blocking user: $e')),
+                    );
+                  }
+                }
+              }
             },
             child: const Text('Block', style: TextStyle(color: Colors.red)),
           ),

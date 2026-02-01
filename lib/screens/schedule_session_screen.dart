@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/user_profile.dart';
+import '../services/study_session_service.dart';
+import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/custom_button.dart';
@@ -12,10 +17,163 @@ class ScheduleSessionScreen extends StatefulWidget {
 }
 
 class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
-  int _selectedDay = 26;
+  final StudySessionService _sessionService = StudySessionService();
+  final UserProfileService _profileService = UserProfileService();
+  
+  DateTime _selectedDate = DateTime.now();
   String _selectedTime = '3:00 PM';
+  String? _currentUid;
+  bool _isLoading = false;
 
   final List<String> _timeSlots = ['9:00 AM', '10:30 AM', '3:00 PM', '4:30 PM'];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUid = FirebaseAuth.instance.currentUser?.uid;
+    _selectedDate = DateTime.now();
+  }
+
+  Future<void> _scheduleSession() async {
+    if (_currentUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to schedule a session')),
+      );
+      return;
+    }
+
+    // Parse time
+    final timeParts = _selectedTime.split(' ');
+    final hourMinute = timeParts[0].split(':');
+    var hour = int.parse(hourMinute[0]);
+    final minute = int.parse(hourMinute[1]);
+    final isPM = timeParts[1] == 'PM';
+    
+    if (isPM && hour != 12) hour += 12;
+    if (!isPM && hour == 12) hour = 0;
+
+    final scheduledAt = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      hour,
+      minute,
+    );
+
+    setState(() => _isLoading = true);
+
+    try {
+      // For demo purposes, we'll need to select a study buddy
+      // In a real app, this would come from a match/conversation
+      await _showSelectBuddyDialog(scheduledAt);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _showSelectBuddyDialog(DateTime scheduledAt) async {
+    // Get user's matches to select a study buddy
+    final matchesSnapshot = await FirebaseFirestore.instance
+        .collection('matches')
+        .where('users', arrayContains: _currentUid)
+        .where('isActive', isEqualTo: true)
+        .get();
+
+    if (matchesSnapshot.docs.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No study buddies found. Match with someone first!')),
+        );
+      }
+      return;
+    }
+
+    // Get buddy profiles
+    final buddies = <UserProfile>[];
+    for (final match in matchesSnapshot.docs) {
+      final users = List<String>.from(match.data()['users'] ?? []);
+      final buddyUid = users.firstWhere((uid) => uid != _currentUid, orElse: () => '');
+      if (buddyUid.isNotEmpty) {
+        final profile = await _profileService.getProfile(buddyUid);
+        if (profile != null) {
+          buddies.add(profile);
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Study Buddy'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: buddies.length,
+            itemBuilder: (context, index) {
+              final buddy = buddies[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: buddy.photoUrl.isNotEmpty
+                      ? NetworkImage(buddy.photoUrl)
+                      : null,
+                  child: buddy.photoUrl.isEmpty
+                      ? Text(buddy.fullName[0].toUpperCase())
+                      : null,
+                ),
+                title: Text(buddy.fullName),
+                subtitle: Text('${buddy.track} • Grade ${buddy.gradeLevel}'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _createSession(buddy.uid, scheduledAt);
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _createSession(String buddyUid, DateTime scheduledAt) async {
+    setState(() => _isLoading = true);
+
+    try {
+      await _sessionService.createSession(
+        guestUid: buddyUid,
+        subject: 'Study Session', // Could be selectable
+        scheduledAt: scheduledAt,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session scheduled successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to schedule: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _onDateSelected(DateTime date) {
+    setState(() {
+      _selectedDate = date;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +191,6 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppConstants.paddingM),
@@ -104,51 +256,33 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
             // Schedule Button
             CustomButton(
               text: 'Schedule Session',
-              onPressed: () {},
+              onPressed: _isLoading ? null : _scheduleSession,
               fullWidth: true,
               type: ButtonType.primary,
+              isLoading: _isLoading,
             ),
             const SizedBox(height: AppConstants.paddingXL),
 
             // Upcoming Sessions
-            const Text(
-              'Upcoming Sessions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Upcoming Sessions',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _showAllSessions(),
+                  child: const Text('See All'),
+                ),
+              ],
             ),
             const SizedBox(height: AppConstants.paddingM),
-            _buildSessionCard(
-              name: 'Maria dela Cruz',
-              subject: 'General Mathematics',
-              dateTime: 'Oct 26, 2024 at 3:00 PM',
-              status: 'Confirmed',
-              statusColor: AppColors.success,
-              statusIcon: Icons.check_circle,
-            ),
-            _buildSessionCard(
-              name: 'Juan dela Cruz',
-              subject: 'Practical Research 1',
-              dateTime: 'Nov 2, 2024 at 10:30 AM',
-              status: 'Pending',
-              statusColor: AppColors.warning,
-              statusIcon: Icons.hourglass_empty,
-            ),
-            const SizedBox(height: AppConstants.paddingL),
-
-            // Past Sessions
-            const Text(
-              'Past Sessions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: AppConstants.paddingM),
-            _buildPastSessionCard(),
+            _buildSessionsList(),
             const SizedBox(height: AppConstants.paddingL),
           ],
         ),
@@ -157,6 +291,10 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   }
 
   Widget _buildCalendar() {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final firstWeekday = DateTime(now.year, now.month, 1).weekday % 7;
+    
     return Column(
       children: [
         Row(
@@ -166,9 +304,9 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
               icon: const Icon(Icons.arrow_back_ios, size: 16),
               onPressed: () {},
             ),
-            const Text(
-              'October 2024',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              '${_getMonthName(now.month)} ${now.year}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             IconButton(
               icon: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -192,15 +330,20 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
               .toList(),
         ),
         const SizedBox(height: AppConstants.paddingS),
-        // Simplified calendar grid for UI match
-        _buildCalendarGrid(),
+        _buildCalendarGrid(daysInMonth, firstWeekday),
       ],
     );
   }
 
-  Widget _buildCalendarGrid() {
-    // Starting on Tuesday (Oct 1 2024)
-    // 31 days
+  String _getMonthName(int month) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[month - 1];
+  }
+
+  Widget _buildCalendarGrid(int daysInMonth, int firstWeekday) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -208,32 +351,20 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
         crossAxisCount: 7,
         childAspectRatio: 1.2,
       ),
-      itemCount: 35, // 5 rows
+      itemCount: 42,
       itemBuilder: (context, index) {
-        // Offset for empty days at start (Oct 1 is Tuesday, so S M are empty? Oct 1 2024 is actually Tuesday)
-        // S M T W T F S
-        //     1 2 3 4 5
-        // ...
-        // Let's just hardcode the visual as seen in the image for "100% similar"
-        // Image: 1st row starts at T (Tuesday) with 1.
-        // Wait, image shows: S M T W T F S
-        //                    1 2 3 4 5
-        // So S M are empty.
-
-        int day = index - 1; // Start counting from 1 at index 2
-
-        if (index < 2 || day > 31) {
+        final day = index - firstWeekday + 1;
+        
+        if (day < 1 || day > daysInMonth) {
           return const SizedBox();
         }
 
-        bool isSelected = day == _selectedDay;
+        final date = DateTime(DateTime.now().year, DateTime.now().month, day);
+        final isSelected = _selectedDate.day == day && 
+                          _selectedDate.month == DateTime.now().month;
 
         return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedDay = day;
-            });
-          },
+          onTap: () => _onDateSelected(date),
           child: Container(
             margin: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -254,139 +385,107 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     );
   }
 
-  Widget _buildSessionCard({
-    required String name,
-    required String subject,
-    required String dateTime,
-    required String status,
-    required Color statusColor,
-    required IconData statusIcon,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppConstants.paddingM),
-      padding: const EdgeInsets.all(AppConstants.paddingM),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppConstants.radiusL),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.backgroundLight,
-            child: const Icon(Icons.person, color: AppColors.textSecondary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  subject,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  dateTime,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+  Widget _buildSessionsList() {
+    if (_currentUid == null) {
+      return const Center(child: Text('Please log in'));
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _sessionService.streamUserSessions(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final sessions = snapshot.data?.docs ?? [];
+        
+        if (sessions.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(AppConstants.paddingL),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppConstants.radiusL),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: Colors.transparent),
-            child: Row(
-              children: [
-                Icon(statusIcon, size: 14, color: statusColor),
-                const SizedBox(width: 4),
-                Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+            child: const Center(
+              child: Text(
+                'No upcoming sessions\nSchedule one now!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
             ),
-          ),
-        ],
-      ),
+          );
+        }
+
+        return Column(
+          children: sessions.take(3).map((doc) {
+            final session = StudySession.fromDoc(doc);
+            return _buildSessionCard(session);
+          }).toList(),
+        );
+      },
     );
   }
 
-  Widget _buildPastSessionCard() {
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.paddingM),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppConstants.radiusL),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.3),
-        ), // Slight blue border as seen in image
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
+  Widget _buildSessionCard(StudySession session) {
+    return FutureBuilder<UserProfile?>(
+      future: _profileService.getProfile(session.guestUid),
+      builder: (context, snapshot) {
+        final buddy = snapshot.data;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppConstants.paddingM),
+          padding: const EdgeInsets.all(AppConstants.paddingM),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppConstants.radiusL),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
+          child: Row(
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: Colors.orange.shade100, // Placeholder color
-                child: const Icon(Icons.person, color: Colors.brown),
+                backgroundColor: AppColors.backgroundLight,
+                backgroundImage: buddy?.photoUrl.isNotEmpty == true
+                    ? NetworkImage(buddy!.photoUrl)
+                    : null,
+                child: buddy?.photoUrl.isEmpty != false
+                    ? const Icon(Icons.person, color: AppColors.textSecondary)
+                    : null,
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Isabel Reyes',
-                      style: TextStyle(
+                      buddy?.fullName ?? 'Loading...',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                     Text(
-                      'General Physics 1',
-                      style: TextStyle(
+                      session.subject,
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Oct 19, 2024 at 4:30 PM',
-                      style: TextStyle(
+                      _formatDateTime(session.scheduledAt),
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
@@ -394,59 +493,41 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
                   ],
                 ),
               ),
-            ],
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Divider(height: 1),
-          ),
-          const Text(
-            'Was the session completed?',
-            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade200,
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: const Text('No'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: session.statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FeedbackRatingScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                child: Text(
+                  session.statusDisplay,
+                  style: TextStyle(
+                    color: session.statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
-                  child: const Text('Yes'),
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour;
+    final ampm = dateTime.hour >= 12 ? 'PM' : 'AM';
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year} at $hour:$minute $ampm';
+  }
+
+  void _showAllSessions() {
+    // Could navigate to a full sessions list screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('All sessions view coming soon')),
     );
   }
 }

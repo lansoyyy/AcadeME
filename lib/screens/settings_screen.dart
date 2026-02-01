@@ -4,6 +4,8 @@ import '../models/user_profile.dart';
 import '../services/auth_service.dart';
 import '../services/user_profile_service.dart';
 import 'edit_profile_screen.dart';
+import 'notification_preferences_screen.dart';
+import 'privacy_settings_screen.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 
@@ -123,12 +125,26 @@ class SettingsScreen extends StatelessWidget {
           _buildSettingsItem(
             icon: Icons.notifications,
             title: 'Notification Preferences',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationPreferencesScreen(),
+                ),
+              );
+            },
           ),
           _buildSettingsItem(
             icon: Icons.lock,
             title: 'Privacy Settings',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PrivacySettingsScreen(),
+                ),
+              );
+            },
           ),
           _buildSettingsItem(
             icon: Icons.info,

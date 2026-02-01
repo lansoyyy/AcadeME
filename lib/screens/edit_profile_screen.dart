@@ -24,8 +24,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _birthdayController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
 
+  final TextEditingController _bioController = TextEditingController();
+
   bool _isLoading = false;
   bool _initialized = false;
+
+  // Matching fields
+  String _selectedTrack = '';
+  int _selectedGradeLevel = 11;
+  final List<String> _selectedSubjects = [];
+  final List<String> _selectedStudyGoals = [];
+
+  final List<String> _tracks = ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
+  final List<int> _gradeLevels = [11, 12];
+  final List<String> _studyGoals = [
+    'Exam prep',
+    'Homework help',
+    'Projects',
+    'Review lessons',
+    'Learn new topics',
+  ];
 
   XFile? _pickedPhoto;
   Uint8List? _pickedPhotoBytes;
@@ -37,6 +55,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _idController.dispose();
     _birthdayController.dispose();
     _ageController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -122,13 +141,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       }
 
-      final updated = UserProfile(
-        uid: uid,
+      final updated = currentProfile.copyWith(
         fullName: _nameController.text.trim(),
         studentId: _idController.text.trim(),
         birthday: _birthdayController.text.trim(),
         age: int.tryParse(_ageController.text.trim()) ?? 0,
         photoUrl: photoUrl,
+        track: _selectedTrack,
+        gradeLevel: _selectedGradeLevel,
+        subjectsInterested: _selectedSubjects,
+        studyGoals: _selectedStudyGoals,
+        bio: _bioController.text.trim(),
+        updatedAt: DateTime.now(),
       );
 
       await UserProfileService().upsertProfile(updated);
@@ -170,12 +194,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     IconData? suffixIcon,
     VoidCallback? onTap,
     bool readOnly = false,
+    int maxLines = 1,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       readOnly: readOnly,
       onTap: onTap,
+      maxLines: maxLines,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.textLight),
@@ -207,6 +233,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
         return null;
       },
+    );
+  }
+
+  Widget _buildDropdownField<T>({
+    required T? value,
+    required String hint,
+    required List<T> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingM),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppConstants.radiusM),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          hint: Text(hint, style: const TextStyle(color: AppColors.textLight)),
+          items: items.map((item) {
+            return DropdownMenuItem<T>(
+              value: item,
+              child: Text(item.toString()),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
     );
   }
 
@@ -242,7 +298,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _idController.text = profile.studentId;
           _birthdayController.text = profile.birthday;
           _ageController.text = profile.age.toString();
+          _bioController.text = profile.bio;
           _photoUrl = profile.photoUrl;
+          _selectedTrack = profile.track.isNotEmpty ? profile.track : '';
+          _selectedGradeLevel = profile.gradeLevel;
+          _selectedSubjects.addAll(profile.subjectsInterested);
+          _selectedStudyGoals.addAll(profile.studyGoals);
           _initialized = true;
         }
 
@@ -357,6 +418,121 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       controller: _ageController,
                       hint: 'Enter your age',
                       keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: AppConstants.paddingXL),
+
+                    // Matching/Discovery Section
+                    const Text(
+                      'Study Buddy Matching',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.paddingM),
+
+                    _buildLabel('Track'),
+                    _buildDropdownField<String>(
+                      value: _selectedTrack.isEmpty ? null : _selectedTrack,
+                      hint: 'Select your track',
+                      items: _tracks,
+                      onChanged: (value) {
+                        setState(() => _selectedTrack = value ?? '');
+                      },
+                    ),
+                    const SizedBox(height: AppConstants.paddingM),
+
+                    _buildLabel('Grade Level'),
+                    _buildDropdownField<int>(
+                      value: _selectedGradeLevel,
+                      hint: 'Select grade level',
+                      items: _gradeLevels,
+                      onChanged: (value) {
+                        setState(() => _selectedGradeLevel = value ?? 11);
+                      },
+                    ),
+                    const SizedBox(height: AppConstants.paddingM),
+
+                    _buildLabel('Bio'),
+                    TextFormField(
+                      controller: _bioController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Tell us about yourself and what you\'re looking for...',
+                        hintStyle: const TextStyle(color: AppColors.textLight),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.all(AppConstants.paddingM),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.paddingM),
+
+                    _buildLabel('Subjects Interested In'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: AppConstants.shsCurriculumSubjects.take(20).map((
+                        subject,
+                      ) {
+                        final title = subject['title'] ?? '';
+                        final isSelected = _selectedSubjects.contains(title);
+                        return FilterChip(
+                          label: Text(title),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedSubjects.add(title);
+                              } else {
+                                _selectedSubjects.remove(title);
+                              }
+                            });
+                          },
+                          selectedColor: AppColors.primary.withOpacity(0.2),
+                          checkmarkColor: AppColors.primary,
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: AppConstants.paddingM),
+
+                    _buildLabel('Study Goals'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _studyGoals.map((goal) {
+                        final isSelected = _selectedStudyGoals.contains(goal);
+                        return FilterChip(
+                          label: Text(goal),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedStudyGoals.add(goal);
+                              } else {
+                                _selectedStudyGoals.remove(goal);
+                              }
+                            });
+                          },
+                          selectedColor: AppColors.primary.withOpacity(0.2),
+                          checkmarkColor: AppColors.primary,
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: AppConstants.paddingXL),
                     CustomButton(
