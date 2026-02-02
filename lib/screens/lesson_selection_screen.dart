@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/academic_data_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 
@@ -12,8 +13,31 @@ class LessonSelectionScreen extends StatefulWidget {
 
 class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final AcademicDataService _academicService = AcademicDataService();
 
   String _selectedCode = '';
+  List<Map<String, dynamic>> _subjects = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubjects();
+  }
+
+  Future<void> _loadSubjects() async {
+    setState(() => _isLoading = true);
+    try {
+      final subjects = await _academicService.getSubjects();
+      setState(() {
+        _subjects = subjects;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading subjects: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -52,14 +76,14 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final query = _searchController.text.trim().toLowerCase();
-    final subjects = AppConstants.shsCurriculumSubjects.where((item) {
+    final filteredSubjects = _subjects.where((item) {
       final code = (item['code'] ?? '').toLowerCase();
-      final title = (item['title'] ?? '').toLowerCase();
+      final name = (item['name'] ?? '').toLowerCase();
       final type = (item['type'] ?? '').toLowerCase();
 
       if (query.isEmpty) return true;
       return code.contains(query) ||
-          title.contains(query) ||
+          name.contains(query) ||
           type.contains(query);
     }).toList();
 
@@ -113,95 +137,111 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
             const SizedBox(height: AppConstants.paddingL),
 
             const Text(
-              'Select the lesson you need help with.',
+              'Select lesson you need help with.',
               style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
             ),
             const SizedBox(height: AppConstants.paddingL),
 
             // Grid
             Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: AppConstants.paddingM,
-                  mainAxisSpacing: AppConstants.paddingM,
-                  childAspectRatio: 0.8,
-                ),
-                itemCount: subjects.length,
-                itemBuilder: (context, index) {
-                  final lesson = subjects[index];
-                  final code = (lesson['code'] ?? '').trim();
-                  final title = (lesson['title'] ?? '').trim();
-                  final type = (lesson['type'] ?? '').trim();
-                  final isSelected = _selectedCode == code && code.isNotEmpty;
-
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedCode = code;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(AppConstants.paddingM),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFDCE4FF)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(
-                          AppConstants.radiusL,
-                        ),
-                        border: isSelected
-                            ? Border.all(color: AppColors.primary, width: 2)
-                            : Border.all(color: AppColors.borderLight),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filteredSubjects.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No subjects found',
+                        style: TextStyle(color: AppColors.textLight),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            height: 80,
-                            width: 80,
+                    )
+                  : GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: AppConstants.paddingM,
+                            mainAxisSpacing: AppConstants.paddingM,
+                            childAspectRatio: 0.8,
+                          ),
+                      itemCount: filteredSubjects.length,
+                      itemBuilder: (context, index) {
+                        final lesson = filteredSubjects[index];
+                        final code = (lesson['code'] ?? '').trim();
+                        final name = (lesson['name'] ?? '').trim();
+                        final type = (lesson['type'] ?? '').trim();
+                        final isSelected =
+                            _selectedCode == code && code.isNotEmpty;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedCode = code;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(
+                              AppConstants.paddingM,
+                            ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? Colors.white
-                                  : AppColors.backgroundLight,
-                              shape: BoxShape.circle,
+                                  ? const Color(0xFFDCE4FF)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.radiusL,
+                              ),
+                              border: isSelected
+                                  ? Border.all(
+                                      color: AppColors.primary,
+                                      width: 2,
+                                    )
+                                  : Border.all(color: AppColors.borderLight),
                             ),
-                            child: Icon(
-                              _iconForType(type),
-                              size: 40,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  height: 80,
+                                  width: 80,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : AppColors.backgroundLight,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _iconForType(type),
+                                    size: 40,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: AppConstants.paddingM),
+                                Text(
+                                  name,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_labelForType(type)}${code.isNotEmpty ? ' • $code' : ''}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isSelected
+                                        ? AppColors.primary.withOpacity(0.7)
+                                        : AppColors.textLight,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: AppConstants.paddingM),
-                          Text(
-                            title,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${_labelForType(type)}${code.isNotEmpty ? ' • $code' : ''}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isSelected
-                                  ? AppColors.primary.withOpacity(0.7)
-                                  : AppColors.textLight,
-                            ),
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),

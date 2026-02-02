@@ -11,10 +11,12 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Add your admin UIDs here after creating admin account in Firebase Console
+      // IMPORTANT: Add your admin Firebase Auth UIDs here after creating admin accounts in Firebase Console
+      // Get admin UIDs from: Firebase Console > Authentication > Users > Click on admin user > Copy UID
+      // Example: 'abc123xyz789def456'
       return isAuthenticated() && request.auth.uid in [
-        // 'ADMIN_UID_1',
-        // 'ADMIN_UID_2',
+        // 'YOUR_ADMIN_UID_1_HERE',
+        // 'YOUR_ADMIN_UID_2_HERE',
       ];
     }
 

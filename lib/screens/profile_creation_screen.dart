@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/academic_data_service.dart';
 import '../services/auth_service.dart';
 import '../models/user_profile.dart';
 import '../services/profile_image_service.dart';
@@ -36,14 +37,45 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
   int _selectedGradeLevel = 11;
   final List<String> _selectedSubjects = [];
 
-  final List<String> _tracks = ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
-  final List<int> _gradeLevels = [11, 12];
+  final AcademicDataService _academicService = AcademicDataService();
+
+  // Academic data from Firestore
+  List<String> _tracks = [];
+  List<int> _gradeLevels = [];
+  List<Map<String, dynamic>> _subjects = [];
+  bool _isLoadingAcademicData = true;
 
   bool _isLoading = false;
   bool _obscure = true;
 
   XFile? _pickedPhoto;
   Uint8List? _pickedPhotoBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAcademicData();
+  }
+
+  Future<void> _loadAcademicData() async {
+    try {
+      final [tracksData, gradeLevelsData, subjectsData] = await Future.wait([
+        _academicService.getStrands(),
+        _academicService.getGradeLevels(),
+        _academicService.getSubjects(),
+      ]);
+
+      setState(() {
+        _tracks = tracksData.map((s) => s['name'] as String).toList();
+        _gradeLevels = gradeLevelsData.map((g) => g['value'] as int).toList();
+        _subjects = subjectsData;
+        _isLoadingAcademicData = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading academic data: $e');
+      setState(() => _isLoadingAcademicData = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -539,31 +571,31 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
                 // Subjects Interested
                 _buildLabel('Subjects Interested In'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: AppConstants.shsCurriculumSubjects.take(20).map((
-                    subject,
-                  ) {
-                    final title = subject['title'] ?? '';
-                    final isSelected = _selectedSubjects.contains(title);
-                    return FilterChip(
-                      label: Text(title),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedSubjects.add(title);
-                          } else {
-                            _selectedSubjects.remove(title);
-                          }
-                        });
-                      },
-                      selectedColor: AppColors.primary.withOpacity(0.2),
-                      checkmarkColor: AppColors.primary,
-                    );
-                  }).toList(),
-                ),
+                _isLoadingAcademicData
+                    ? const Center(child: CircularProgressIndicator())
+                    : Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _subjects.take(20).map<Widget>((subject) {
+                          final name = subject['name'] ?? '';
+                          final isSelected = _selectedSubjects.contains(name);
+                          return FilterChip(
+                            label: Text(name),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedSubjects.add(name);
+                                } else {
+                                  _selectedSubjects.remove(name);
+                                }
+                              });
+                            },
+                            selectedColor: AppColors.primary.withOpacity(0.2),
+                            checkmarkColor: AppColors.primary,
+                          );
+                        }).toList(),
+                      ),
                 const SizedBox(height: AppConstants.paddingXL),
 
                 // Next Button

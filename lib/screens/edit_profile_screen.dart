@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/user_profile.dart';
+import '../services/academic_data_service.dart';
 import '../services/profile_image_service.dart';
 import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
@@ -26,6 +27,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   final TextEditingController _bioController = TextEditingController();
 
+  final AcademicDataService _academicService = AcademicDataService();
+
   bool _isLoading = false;
   bool _initialized = false;
 
@@ -35,19 +38,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final List<String> _selectedSubjects = [];
   final List<String> _selectedStudyGoals = [];
 
-  final List<String> _tracks = ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
-  final List<int> _gradeLevels = [11, 12];
-  final List<String> _studyGoals = [
-    'Exam prep',
-    'Homework help',
-    'Projects',
-    'Review lessons',
-    'Learn new topics',
-  ];
+  // Academic data from Firestore
+  List<String> _tracks = [];
+  List<int> _gradeLevels = [];
+  List<Map<String, dynamic>> _subjects = [];
+  bool _isLoadingAcademicData = true;
 
   XFile? _pickedPhoto;
   Uint8List? _pickedPhotoBytes;
   String _photoUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAcademicData();
+  }
+
+  Future<void> _loadAcademicData() async {
+    try {
+      final [tracksData, gradeLevelsData, subjectsData] = await Future.wait([
+        _academicService.getStrands(),
+        _academicService.getGradeLevels(),
+        _academicService.getSubjects(),
+      ]);
+
+      setState(() {
+        _tracks = tracksData.map((s) => s['name'] as String).toList();
+        _gradeLevels = gradeLevelsData.map((g) => g['value'] as int).toList();
+        _subjects = subjectsData;
+        _isLoadingAcademicData = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading academic data: $e');
+      setState(() => _isLoadingAcademicData = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -463,17 +488,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         hintStyle: const TextStyle(color: AppColors.textLight),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.all(AppConstants.paddingM),
+                        contentPadding: const EdgeInsets.all(
+                          AppConstants.paddingM,
+                        ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.radiusM,
+                          ),
                           borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.radiusM,
+                          ),
                           borderSide: const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.radiusM,
+                          ),
                           borderSide: const BorderSide(
                             color: AppColors.primary,
                             width: 2,
@@ -484,38 +517,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     const SizedBox(height: AppConstants.paddingM),
 
                     _buildLabel('Subjects Interested In'),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: AppConstants.shsCurriculumSubjects.take(20).map((
-                        subject,
-                      ) {
-                        final title = subject['title'] ?? '';
-                        final isSelected = _selectedSubjects.contains(title);
-                        return FilterChip(
-                          label: Text(title),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedSubjects.add(title);
-                              } else {
-                                _selectedSubjects.remove(title);
-                              }
-                            });
-                          },
-                          selectedColor: AppColors.primary.withOpacity(0.2),
-                          checkmarkColor: AppColors.primary,
-                        );
-                      }).toList(),
-                    ),
+                    _isLoadingAcademicData
+                        ? const Center(child: CircularProgressIndicator())
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _subjects.take(20).map<Widget>((subject) {
+                              final name = subject['name'] ?? '';
+                              final isSelected = _selectedSubjects.contains(
+                                name,
+                              );
+                              return FilterChip(
+                                label: Text(name),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      _selectedSubjects.add(name);
+                                    } else {
+                                      _selectedSubjects.remove(name);
+                                    }
+                                  });
+                                },
+                                selectedColor: AppColors.primary.withOpacity(
+                                  0.2,
+                                ),
+                                checkmarkColor: AppColors.primary,
+                              );
+                            }).toList(),
+                          ),
                     const SizedBox(height: AppConstants.paddingM),
 
                     _buildLabel('Study Goals'),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _studyGoals.map((goal) {
+                      children: AppConstants.studyGoals.map((goal) {
                         final isSelected = _selectedStudyGoals.contains(goal);
                         return FilterChip(
                           label: Text(goal),
