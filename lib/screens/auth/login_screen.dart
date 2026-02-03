@@ -1,5 +1,7 @@
+import 'package:academe/admin_app/screens/admin_login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '../../services/auth_service.dart';
 import '../../utils/colors.dart';
 import '../../utils/constants.dart';
@@ -20,6 +22,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _obscure = true;
+
+  // Show admin panel link in debug mode
+  bool get _showAdminLink => kDebugMode;
 
   @override
   void dispose() {
@@ -45,9 +50,9 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.of(context).popUntil((route) => route.isFirst);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Login failed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
     } finally {
       if (mounted) {
         setState(() {
@@ -123,8 +128,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppConstants.radiusM),
-                      borderSide:
-                          const BorderSide(color: AppColors.primary, width: 2),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
                     ),
                   ),
                   validator: (value) {
@@ -162,8 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppConstants.radiusM),
-                      borderSide:
-                          const BorderSide(color: AppColors.primary, width: 2),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
                     ),
                     suffixIcon: IconButton(
                       onPressed: () {
@@ -209,6 +218,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Admin Login Link (only visible in debug mode)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppConstants.paddingM),
+                  child: Center(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AdminLoginScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.admin_panel_settings, size: 16),
+                      label: const Text(
+                        'Admin Panel',
+                        style: TextStyle(fontSize: 12),
                       ),
                     ),
                   ),
