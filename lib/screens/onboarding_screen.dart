@@ -20,25 +20,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'title': 'Welcome to AcadeME!',
       'description':
           'Your smart study buddy for PHINMA-Araullo University. Let\'s get you connected.',
-      'image': 'assets/images/onboarding1.png', // Placeholder path
+      'image': 'assets/images/student.png', // Placeholder path
     },
     {
       'title': 'Find Your Perfect Match',
       'description':
           'Get matched with study buddies based on your subjects, learning style, and availability.',
-      'image': 'assets/images/onboarding2.png', // Placeholder path
+      'image': 'assets/images/communication.png', // Placeholder path
     },
     {
       'title': 'Schedule Sessions with Ease',
       'description':
           'Coordinate and plan your study sessions directly within the app.',
-      'image': 'assets/images/onboarding3.png', // Placeholder path
+      'image': 'assets/images/book.png', // Placeholder path
     },
     {
       'title': 'Grow Together',
       'description':
           'Provide and receive valuable feedback to improve your collaborative learning experience.',
-      'image': 'assets/images/onboarding4.png', // Placeholder path
+      'image': 'assets/images/graduation.png', // Placeholder path
     },
   ];
 
@@ -150,18 +150,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Image Placeholder
-          Container(
-            height: 300,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors
-                  .backgroundLight, // Light purple/grey background for placeholder
-              borderRadius: BorderRadius.circular(AppConstants.radiusL),
-            ),
-            child: const Center(
-              child: Icon(Icons.image, size: 80, color: AppColors.primary),
-            ),
-          ),
+          Image.asset(_onboardingData[_currentPage]['image']!),
           const SizedBox(height: AppConstants.paddingXL),
           Text(
             title,
