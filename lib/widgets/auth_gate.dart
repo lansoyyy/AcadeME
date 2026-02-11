@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../screens/home_screen.dart';
 import '../screens/onboarding_screen.dart';
+import '../screens/pending_approval_screen.dart';
 import '../screens/profile_creation_screen.dart';
 import '../models/user_profile.dart';
 import '../services/user_profile_service.dart';
@@ -37,6 +38,14 @@ class AuthGate extends StatelessWidget {
             final profile = profileSnapshot.data;
             if (profile == null) {
               return const ProfileCreationScreen(canGoBack: false);
+            }
+
+            // Check account approval status
+            if (profile.isPending) {
+              return const PendingApprovalScreen(status: 'pending');
+            }
+            if (profile.isRejected) {
+              return const PendingApprovalScreen(status: 'rejected');
             }
 
             return const HomeScreen();

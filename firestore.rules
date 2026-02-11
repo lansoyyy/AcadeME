@@ -11,13 +11,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // IMPORTANT: Add your admin Firebase Auth UIDs here after creating admin accounts in Firebase Console
-      // Get admin UIDs from: Firebase Console > Authentication > Users > Click on admin user > Copy UID
-      // Example: 'abc123xyz789def456'
-      return isAuthenticated() && request.auth.uid in [
-        // 'YOUR_ADMIN_UID_1_HERE',
-        // 'YOUR_ADMIN_UID_2_HERE',
-      ];
+      // Hardcoded admin email check
+      // Admin must sign in with: admin@academe.app / AcadeME_Admin_2026!
+      return isAuthenticated() && request.auth.token.email == 'admin@academe.app';
     }
 
     // Users collection - any authenticated user can read profiles (needed for chat, matches, sessions)

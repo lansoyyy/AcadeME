@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/academic_data_service.dart';
 import '../services/auth_service.dart';
+import '../services/face_detection_service.dart';
 import '../models/user_profile.dart';
 import '../services/profile_image_service.dart';
 import '../services/user_profile_service.dart';
@@ -50,6 +51,8 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
   XFile? _pickedPhoto;
   Uint8List? _pickedPhotoBytes;
+  bool _isValidatingFace = false;
+  bool _faceValidated = false;
 
   @override
   void initState() {
@@ -164,17 +167,62 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
     if (file == null) return;
 
+    if (!mounted) return;
+    setState(() {
+      _isValidatingFace = true;
+    });
+
+    // Run face detection
+    final result = await FaceDetectionService().validateFace(file);
+
+    if (!mounted) return;
+
+    if (!result.isValid) {
+      setState(() {
+        _isValidatingFace = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     final bytes = await file.readAsBytes();
 
     if (!mounted) return;
     setState(() {
       _pickedPhoto = file;
       _pickedPhotoBytes = bytes;
+      _isValidatingFace = false;
+      _faceValidated = true;
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Face detected successfully!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _onNext() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Require profile photo with face validation
+    if (_pickedPhoto == null || !_faceValidated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile picture with a clear face photo is required.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -221,14 +269,34 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
         subjectsInterested: _selectedSubjects,
         bio: _bioController.text.trim(),
         isDiscoverable: true,
+        accountStatus: 'pending',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
       await UserProfileService().upsertProfile(profile);
 
+      // Sign out after registration — user must wait for admin approval
+      await FirebaseAuth.instance.signOut();
+
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+
+      // Navigate to login screen with success message
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Registration submitted! Please wait for admin approval before logging in.',
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 5),
+        ),
+      );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -461,13 +529,19 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                   child: Stack(
                     children: [
                       GestureDetector(
-                        onTap: _pickPhoto,
+                        onTap: _isValidatingFace ? null : _pickPhoto,
                         child: Container(
                           width: 120,
                           height: 120,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: AppColors.backgroundLight,
+                            border: Border.all(
+                              color: _faceValidated
+                                  ? Colors.green
+                                  : Colors.transparent,
+                              width: 3,
+                            ),
                             image: _pickedPhotoBytes != null
                                 ? DecorationImage(
                                     image: MemoryImage(_pickedPhotoBytes!),
@@ -475,7 +549,9 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                                   )
                                 : null,
                           ),
-                          child: _pickedPhotoBytes == null
+                          child: _isValidatingFace
+                              ? const Center(child: CircularProgressIndicator())
+                              : _pickedPhotoBytes == null
                               ? const Center(
                                   child: Icon(
                                     Icons.person,
@@ -491,14 +567,16 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                         right: 0,
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
+                          decoration: BoxDecoration(
+                            color: _faceValidated
+                                ? Colors.green
+                                : AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: GestureDetector(
-                            onTap: _pickPhoto,
-                            child: const Icon(
-                              Icons.camera_alt,
+                            onTap: _isValidatingFace ? null : _pickPhoto,
+                            child: Icon(
+                              _faceValidated ? Icons.check : Icons.camera_alt,
                               color: Colors.white,
                               size: 20,
                             ),
@@ -509,10 +587,22 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                   ),
                 ),
                 const SizedBox(height: AppConstants.paddingS),
-                const Center(
+                Center(
                   child: Text(
-                    'Add a Profile Picture',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    _isValidatingFace
+                        ? 'Detecting face...'
+                        : _faceValidated
+                        ? 'Face verified!'
+                        : 'Add a Profile Picture *',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: _faceValidated
+                          ? Colors.green
+                          : _isValidatingFace
+                          ? AppColors.textSecondary
+                          : Colors.black,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppConstants.paddingXL),

@@ -26,7 +26,7 @@ class AdminAuthService extends ChangeNotifier {
     // Can be enhanced later if needed
   }
 
-  /// Login with hardcoded credentials
+  /// Login with hardcoded credentials and sign into Firebase Auth
   /// Returns true if successful
   Future<bool> login(String username, String password) async {
     // Validate against hardcoded credentials
@@ -34,6 +34,19 @@ class AdminAuthService extends ChangeNotifier {
         password == AdminConfig.adminPassword) {
       _isAuthenticated = true;
       _adminUsername = username;
+
+      // Also sign into Firebase Auth for Firestore permissions
+      try {
+        final credential = await FirebaseAuth.instance
+            .signInWithEmailAndPassword(
+              email: AdminConfig.adminEmail,
+              password: AdminConfig.adminFirebasePassword,
+            );
+        _firebaseUser = credential.user;
+      } catch (e) {
+        debugPrint('Admin Firebase sign-in failed: $e');
+        // Still allow UI login even if Firebase fails - will show error in UI
+      }
 
       notifyListeners();
       return true;

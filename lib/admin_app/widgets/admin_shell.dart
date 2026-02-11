@@ -8,6 +8,7 @@ import '../screens/reports_blacklist/reports_list_screen.dart';
 import '../screens/analytics/analytics_dashboard_screen.dart';
 import '../screens/feedback_ratings/ratings_overview_screen.dart';
 import '../screens/academic_structure/subjects_screen.dart';
+import '../screens/registration_approval/registration_approval_screen.dart';
 
 /// AdminShell - Main navigation container for admin interface
 /// Provides NavigationRail (desktop/tablet) or Drawer (mobile)
@@ -77,6 +78,13 @@ class _AdminShellState extends State<AdminShell> {
       icon: Icons.school_outlined,
       selectedIcon: Icons.school,
       screen: const SubjectsScreen(),
+    ),
+    _NavigationItem(
+      index: 8,
+      label: 'Registrations',
+      icon: Icons.how_to_reg_outlined,
+      selectedIcon: Icons.how_to_reg,
+      screen: const RegistrationApprovalScreen(),
     ),
   ];
 
@@ -153,19 +161,19 @@ class _AdminShellState extends State<AdminShell> {
               selectedIndex: _selectedIndex,
               onDestinationSelected: _onDestinationSelected,
               destinations: _navItems
-                  .map((item) => NavigationRailDestination(
-                        icon: Icon(item.icon),
-                        selectedIcon: Icon(item.selectedIcon),
-                        label: Text(item.label),
-                      ))
+                  .map(
+                    (item) => NavigationRailDestination(
+                      icon: Icon(item.icon),
+                      selectedIcon: Icon(item.selectedIcon),
+                      label: Text(item.label),
+                    ),
+                  )
                   .toList(),
             )
           else
             const SizedBox.shrink(),
           // Content
-          Expanded(
-            child: _navItems[_selectedIndex].screen,
-          ),
+          Expanded(child: _navItems[_selectedIndex].screen),
         ],
       ),
       drawer: !isWideScreen
@@ -191,9 +199,7 @@ class _AdminShellState extends State<AdminShell> {
                             children: [
                               Text(
                                 'AcadeME Admin',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
+                                style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               Text(

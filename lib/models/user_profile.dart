@@ -21,6 +21,7 @@ class UserProfile {
   final Map<String, dynamic> location;
   final Map<String, dynamic> matchPreferences;
   final bool isDiscoverable;
+  final String accountStatus; // 'pending', 'approved', 'rejected'
   final DateTime? lastActiveAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -41,10 +42,15 @@ class UserProfile {
     this.location = const {},
     this.matchPreferences = const {},
     this.isDiscoverable = true,
+    this.accountStatus = 'pending',
     this.lastActiveAt,
     this.createdAt,
     this.updatedAt,
   });
+
+  bool get isPending => accountStatus == 'pending';
+  bool get isApproved => accountStatus == 'approved';
+  bool get isRejected => accountStatus == 'rejected';
 
   factory UserProfile.fromMap(String uid, Map<String, dynamic> map) {
     return UserProfile(
@@ -67,6 +73,7 @@ class UserProfile {
       location: _parseMap(map['location']),
       matchPreferences: _parseMap(map['matchPreferences']),
       isDiscoverable: map['isDiscoverable'] ?? true,
+      accountStatus: (map['accountStatus'] ?? 'pending') as String,
       lastActiveAt: _parseTimestamp(map['lastActiveAt']),
       createdAt: _parseTimestamp(map['createdAt']),
       updatedAt: _parseTimestamp(map['updatedAt']),
@@ -89,6 +96,7 @@ class UserProfile {
       'location': location,
       'matchPreferences': matchPreferences,
       'isDiscoverable': isDiscoverable,
+      'accountStatus': accountStatus,
       'lastActiveAt': lastActiveAt != null
           ? Timestamp.fromDate(lastActiveAt!)
           : null,
@@ -113,6 +121,7 @@ class UserProfile {
     Map<String, dynamic>? location,
     Map<String, dynamic>? matchPreferences,
     bool? isDiscoverable,
+    String? accountStatus,
     DateTime? lastActiveAt,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -133,6 +142,7 @@ class UserProfile {
       location: location ?? this.location,
       matchPreferences: matchPreferences ?? this.matchPreferences,
       isDiscoverable: isDiscoverable ?? this.isDiscoverable,
+      accountStatus: accountStatus ?? this.accountStatus,
       lastActiveAt: lastActiveAt ?? this.lastActiveAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
