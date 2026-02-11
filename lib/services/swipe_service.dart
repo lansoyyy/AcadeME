@@ -21,7 +21,7 @@ extension SwipeDirectionExtension on SwipeDirection {
 /// All operations are client-side (no Cloud Functions)
 class SwipeService {
   SwipeService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -90,7 +90,10 @@ class SwipeService {
     required String toUid,
   }) async {
     // Check if toUid has already liked fromUid
-    final theirSwipeRef = _usersRef.doc(toUid).collection('swipes').doc(fromUid);
+    final theirSwipeRef = _usersRef
+        .doc(toUid)
+        .collection('swipes')
+        .doc(fromUid);
     final theirSwipeDoc = await theirSwipeRef.get();
 
     // If they haven't liked us, no match
@@ -152,11 +155,14 @@ class SwipeService {
           'participants': [fromUid, toUid],
           'createdAt': now,
           'updatedAt': now,
-          'lastMessage': null,
-          'unreadCount': {
-            fromUid: 0,
-            toUid: 0,
+          'lastMessage': {
+            'text': 'You matched! Start your study session planning.',
+            'senderId': 'system',
+            'createdAt': now,
+            'type': 'system',
           },
+          'lastMessageAt': now,
+          'unreadCount': {fromUid: 0, toUid: 0},
           'isActive': true,
         });
 
@@ -196,10 +202,7 @@ class SwipeService {
   /// Get list of UIDs that the user has already swiped on
   /// Used to filter candidates
   Future<Set<String>> getSwipedUserIds(String uid) async {
-    final snapshot = await _usersRef
-        .doc(uid)
-        .collection('swipes')
-        .get();
+    final snapshot = await _usersRef.doc(uid).collection('swipes').get();
 
     return snapshot.docs.map((doc) => doc.id).toSet();
   }
@@ -239,10 +242,7 @@ class SwipeService {
 
   /// Unmatch a user (delete match and conversation)
   /// Only the match creator can unmatch, or either participant
-  Future<void> unmatch({
-    required String uid,
-    required String otherUid,
-  }) async {
+  Future<void> unmatch({required String uid, required String otherUid}) async {
     final matchId = _generateMatchId(uid, otherUid);
     final conversationId = matchId;
 
@@ -267,13 +267,9 @@ class SwipeService {
     required String blockedUid,
   }) async {
     // Record the block
-    await _usersRef
-        .doc(uid)
-        .collection('blocks')
-        .doc(blockedUid)
-        .set({
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+    await _usersRef.doc(uid).collection('blocks').doc(blockedUid).set({
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
     // Remove any existing match
     try {
@@ -285,10 +281,7 @@ class SwipeService {
 
   /// Get list of blocked user IDs
   Future<Set<String>> getBlockedUserIds(String uid) async {
-    final snapshot = await _usersRef
-        .doc(uid)
-        .collection('blocks')
-        .get();
+    final snapshot = await _usersRef.doc(uid).collection('blocks').get();
 
     return snapshot.docs.map((doc) => doc.id).toSet();
   }

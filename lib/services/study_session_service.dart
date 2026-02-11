@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 
 /// Service for managing study sessions
 class StudySessionService {
   StudySessionService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -28,6 +30,7 @@ class StudySessionService {
     await docRef.set({
       'hostUid': currentUser.uid,
       'guestUid': guestUid,
+      'participants': [currentUser.uid, guestUid],
       'subject': subject,
       'scheduledAt': Timestamp.fromDate(scheduledAt),
       'status': 'pending',
@@ -39,7 +42,49 @@ class StudySessionService {
     return docRef.id;
   }
 
-  /// Get all sessions for current user
+  /// Stream ALL sessions where the current user is either host or guest
+  Stream<List<StudySession>> streamAllUserSessions() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    final hostStream = _sessionsRef
+        .where('hostUid', isEqualTo: currentUser.uid)
+        .snapshots();
+
+    final guestStream = _sessionsRef
+        .where('guestUid', isEqualTo: currentUser.uid)
+        .snapshots();
+
+    return Rx.combineLatest2<
+      QuerySnapshot<Map<String, dynamic>>,
+      QuerySnapshot<Map<String, dynamic>>,
+      List<StudySession>
+    >(hostStream, guestStream, (hostSnap, guestSnap) {
+      final allDocs = <String, DocumentSnapshot<Map<String, dynamic>>>{};
+      for (final doc in hostSnap.docs) {
+        allDocs[doc.id] = doc;
+      }
+      for (final doc in guestSnap.docs) {
+        allDocs[doc.id] = doc;
+      }
+      final sessions = allDocs.values
+          .map((doc) {
+            try {
+              return StudySession.fromDoc(doc);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<StudySession>()
+          .toList();
+      sessions.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+      return sessions;
+    });
+  }
+
+  /// Get all sessions where user is the host
   Stream<QuerySnapshot<Map<String, dynamic>>> streamUserSessions() {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -98,7 +143,8 @@ class StudySessionService {
 
   /// Get session by ID
   Future<DocumentSnapshot<Map<String, dynamic>>?> getSession(
-      String sessionId) async {
+    String sessionId,
+  ) async {
     final doc = await _sessionsRef.doc(sessionId).get();
     return doc.exists ? doc : null;
   }

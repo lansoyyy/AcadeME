@@ -30,12 +30,73 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
     try {
       final subjects = await _academicService.getSubjects();
       setState(() {
-        _subjects = subjects;
+        // Use Firestore data if available, otherwise fallback to defaults
+        _subjects = subjects.isNotEmpty
+            ? subjects
+            : [
+                {'code': 'OC', 'name': 'Oral Communication', 'type': 'Core'},
+                {'code': 'GM', 'name': 'General Mathematics', 'type': 'Core'},
+                {'code': 'EAP', 'name': 'English for Academic', 'type': 'Core'},
+                {'code': 'FIL', 'name': 'Filipino', 'type': 'Core'},
+                {
+                  'code': '21LIT',
+                  'name': '21st Century Literature',
+                  'type': 'Core',
+                },
+                {'code': 'CA', 'name': 'Contemporary Arts', 'type': 'Core'},
+                {
+                  'code': 'MIL',
+                  'name': 'Media and Information Literacy',
+                  'type': 'Core',
+                },
+                {'code': 'PE', 'name': 'Physical Education', 'type': 'Core'},
+                {'code': 'ES', 'name': 'Earth Science', 'type': 'Core'},
+                {'code': 'CHEM', 'name': 'General Chemistry', 'type': 'Core'},
+                {'code': 'CALC', 'name': 'Basic Calculus', 'type': 'Core'},
+                {'code': 'PHY', 'name': 'Physics', 'type': 'Core'},
+                {
+                  'code': 'ABM1',
+                  'name': 'Applied Economics',
+                  'type': 'Applied',
+                },
+                {'code': 'ABM2', 'name': 'Business Math', 'type': 'Applied'},
+                {
+                  'code': 'STEM1',
+                  'name': 'Pre-Calculus',
+                  'type': 'Specialized',
+                },
+                {'code': 'HUMSS1', 'name': 'Philosophy', 'type': 'Specialized'},
+              ];
         _isLoading = false;
       });
     } catch (e) {
       debugPrint('Error loading subjects: $e');
-      setState(() => _isLoading = false);
+      // Use fallback data on error
+      setState(() {
+        _subjects = [
+          {'code': 'OC', 'name': 'Oral Communication', 'type': 'Core'},
+          {'code': 'GM', 'name': 'General Mathematics', 'type': 'Core'},
+          {'code': 'EAP', 'name': 'English for Academic', 'type': 'Core'},
+          {'code': 'FIL', 'name': 'Filipino', 'type': 'Core'},
+          {'code': '21LIT', 'name': '21st Century Literature', 'type': 'Core'},
+          {'code': 'CA', 'name': 'Contemporary Arts', 'type': 'Core'},
+          {
+            'code': 'MIL',
+            'name': 'Media and Information Literacy',
+            'type': 'Core',
+          },
+          {'code': 'PE', 'name': 'Physical Education', 'type': 'Core'},
+          {'code': 'ES', 'name': 'Earth Science', 'type': 'Core'},
+          {'code': 'CHEM', 'name': 'General Chemistry', 'type': 'Core'},
+          {'code': 'CALC', 'name': 'Basic Calculus', 'type': 'Core'},
+          {'code': 'PHY', 'name': 'Physics', 'type': 'Core'},
+          {'code': 'ABM1', 'name': 'Applied Economics', 'type': 'Applied'},
+          {'code': 'ABM2', 'name': 'Business Math', 'type': 'Applied'},
+          {'code': 'STEM1', 'name': 'Pre-Calculus', 'type': 'Specialized'},
+          {'code': 'HUMSS1', 'name': 'Philosophy', 'type': 'Specialized'},
+        ];
+        _isLoading = false;
+      });
     }
   }
 

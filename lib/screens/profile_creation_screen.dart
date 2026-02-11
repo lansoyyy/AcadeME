@@ -66,14 +66,53 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
       ]);
 
       setState(() {
-        _tracks = tracksData.map((s) => s['name'] as String).toList();
-        _gradeLevels = gradeLevelsData.map((g) => g['value'] as int).toList();
-        _subjects = subjectsData;
+        // Use Firestore data if available, otherwise fallback to defaults
+        _tracks = tracksData.isNotEmpty
+            ? tracksData.map((s) => s['name'] as String).toList()
+            : ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
+        _gradeLevels = gradeLevelsData.isNotEmpty
+            ? gradeLevelsData.map((g) => g['value'] as int).toList()
+            : [11, 12];
+        _subjects = subjectsData.isNotEmpty
+            ? subjectsData
+            : [
+                {'name': 'Oral Communication', 'code': 'OC'},
+                {'name': 'General Mathematics', 'code': 'GM'},
+                {'name': 'English for Academic', 'code': 'EAP'},
+                {'name': 'Filipino', 'code': 'FIL'},
+                {'name': '21st Century Literature', 'code': '21LIT'},
+                {'name': 'Contemporary Arts', 'code': 'CA'},
+                {'name': 'Media and Information Literacy', 'code': 'MIL'},
+                {'name': 'Physical Education', 'code': 'PE'},
+                {'name': 'Earth Science', 'code': 'ES'},
+                {'name': 'General Chemistry', 'code': 'CHEM'},
+                {'name': 'Basic Calculus', 'code': 'CALC'},
+                {'name': 'Physics', 'code': 'PHY'},
+              ];
         _isLoadingAcademicData = false;
       });
     } catch (e) {
       debugPrint('Error loading academic data: $e');
-      setState(() => _isLoadingAcademicData = false);
+      // Use fallback data on error
+      setState(() {
+        _tracks = ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
+        _gradeLevels = [11, 12];
+        _subjects = [
+          {'name': 'Oral Communication', 'code': 'OC'},
+          {'name': 'General Mathematics', 'code': 'GM'},
+          {'name': 'English for Academic', 'code': 'EAP'},
+          {'name': 'Filipino', 'code': 'FIL'},
+          {'name': '21st Century Literature', 'code': '21LIT'},
+          {'name': 'Contemporary Arts', 'code': 'CA'},
+          {'name': 'Media and Information Literacy', 'code': 'MIL'},
+          {'name': 'Physical Education', 'code': 'PE'},
+          {'name': 'Earth Science', 'code': 'ES'},
+          {'name': 'General Chemistry', 'code': 'CHEM'},
+          {'name': 'Basic Calculus', 'code': 'CALC'},
+          {'name': 'Physics', 'code': 'PHY'},
+        ];
+        _isLoadingAcademicData = false;
+      });
     }
   }
 

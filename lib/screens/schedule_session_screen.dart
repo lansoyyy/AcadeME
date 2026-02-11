@@ -7,7 +7,6 @@ import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/custom_button.dart';
-import 'feedback_rating_screen.dart';
 
 class ScheduleSessionScreen extends StatefulWidget {
   const ScheduleSessionScreen({super.key});
@@ -19,19 +18,61 @@ class ScheduleSessionScreen extends StatefulWidget {
 class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   final StudySessionService _sessionService = StudySessionService();
   final UserProfileService _profileService = UserProfileService();
-  
+
   DateTime _selectedDate = DateTime.now();
-  String _selectedTime = '3:00 PM';
+  TimeOfDay _selectedTime = TimeOfDay.now();
+  String _selectedSubject = '';
   String? _currentUid;
   bool _isLoading = false;
 
-  final List<String> _timeSlots = ['9:00 AM', '10:30 AM', '3:00 PM', '4:30 PM'];
+  // Fallback subjects if Firestore academic data is empty
+  final List<String> _defaultSubjects = [
+    'Oral Communication',
+    'General Mathematics',
+    'English for Academic',
+    'Filipino',
+    '21st Century Literature',
+    'Contemporary Arts',
+    'Media and Information Literacy',
+    'Physical Education',
+    'Earth Science',
+    'General Chemistry',
+    'Basic Calculus',
+    'Physics',
+  ];
 
   @override
   void initState() {
     super.initState();
     _currentUid = FirebaseAuth.instance.currentUser?.uid;
     _selectedDate = DateTime.now();
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _selectedTime = picked);
+    }
+  }
+
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
   }
 
   Future<void> _scheduleSession() async {
@@ -42,35 +83,32 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
       return;
     }
 
-    // Parse time
-    final timeParts = _selectedTime.split(' ');
-    final hourMinute = timeParts[0].split(':');
-    var hour = int.parse(hourMinute[0]);
-    final minute = int.parse(hourMinute[1]);
-    final isPM = timeParts[1] == 'PM';
-    
-    if (isPM && hour != 12) hour += 12;
-    if (!isPM && hour == 12) hour = 0;
-
     final scheduledAt = DateTime(
       _selectedDate.year,
       _selectedDate.month,
       _selectedDate.day,
-      hour,
-      minute,
+      _selectedTime.hour,
+      _selectedTime.minute,
     );
+
+    if (scheduledAt.isBefore(DateTime.now())) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a future date and time')),
+        );
+      }
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      // For demo purposes, we'll need to select a study buddy
-      // In a real app, this would come from a match/conversation
       await _showSelectBuddyDialog(scheduledAt);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -88,7 +126,9 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     if (matchesSnapshot.docs.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No study buddies found. Match with someone first!')),
+          const SnackBar(
+            content: Text('No study buddies found. Match with someone first!'),
+          ),
         );
       }
       return;
@@ -98,7 +138,10 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     final buddies = <UserProfile>[];
     for (final match in matchesSnapshot.docs) {
       final users = List<String>.from(match.data()['users'] ?? []);
-      final buddyUid = users.firstWhere((uid) => uid != _currentUid, orElse: () => '');
+      final buddyUid = users.firstWhere(
+        (uid) => uid != _currentUid,
+        orElse: () => '',
+      );
       if (buddyUid.isNotEmpty) {
         final profile = await _profileService.getProfile(buddyUid);
         if (profile != null) {
@@ -111,33 +154,44 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Select Study Buddy'),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: buddies.length,
-            itemBuilder: (context, index) {
-              final buddy = buddies[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: buddy.photoUrl.isNotEmpty
-                      ? NetworkImage(buddy.photoUrl)
-                      : null,
-                  child: buddy.photoUrl.isEmpty
-                      ? Text(buddy.fullName[0].toUpperCase())
-                      : null,
+          child: buddies.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No buddies available'),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: buddies.length,
+                  itemBuilder: (context, index) {
+                    final buddy = buddies[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: buddy.photoUrl.isNotEmpty
+                            ? NetworkImage(buddy.photoUrl)
+                            : null,
+                        child: buddy.photoUrl.isEmpty
+                            ? Text(
+                                buddy.fullName.isNotEmpty
+                                    ? buddy.fullName[0].toUpperCase()
+                                    : '?',
+                              )
+                            : null,
+                      ),
+                      title: Text(buddy.fullName),
+                      subtitle: Text(
+                        '${buddy.track} • Grade ${buddy.gradeLevel}',
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _createSession(buddy.uid, scheduledAt);
+                      },
+                    );
+                  },
                 ),
-                title: Text(buddy.fullName),
-                subtitle: Text('${buddy.track} • Grade ${buddy.gradeLevel}'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _createSession(buddy.uid, scheduledAt);
-                },
-              );
-            },
-          ),
         ),
       ),
     );
@@ -147,22 +201,28 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final subject = _selectedSubject.isNotEmpty
+          ? _selectedSubject
+          : 'Study Session';
+
       await _sessionService.createSession(
         guestUid: buddyUid,
-        subject: 'Study Session', // Could be selectable
+        subject: subject,
         scheduledAt: scheduledAt,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session scheduled successfully!')),
+          const SnackBar(
+            content: Text('Session scheduled! Your buddy will be notified.'),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to schedule: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to schedule: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -173,6 +233,86 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     setState(() {
       _selectedDate = date;
     });
+  }
+
+  /// Show session actions depending on role and status
+  void _showSessionActions(StudySession session) {
+    final isHost = session.hostUid == _currentUid;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Guest can accept a pending session
+            if (!isHost && session.isPending)
+              ListTile(
+                leading: const Icon(Icons.check_circle, color: Colors.green),
+                title: const Text('Accept Session'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sessionService.confirmSession(session.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Session accepted!')),
+                  );
+                },
+              ),
+            // Guest can decline a pending session
+            if (!isHost && session.isPending)
+              ListTile(
+                leading: const Icon(Icons.cancel, color: Colors.red),
+                title: const Text('Decline Session'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sessionService.cancelSession(session.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Session declined')),
+                  );
+                },
+              ),
+            // Either user can cancel a pending/confirmed session
+            if ((session.isPending || session.isConfirmed))
+              ListTile(
+                leading: const Icon(Icons.event_busy, color: Colors.orange),
+                title: Text(isHost ? 'Cancel Session' : 'Cancel Session'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sessionService.cancelSession(session.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Session cancelled')),
+                  );
+                },
+              ),
+            // Either user can mark a confirmed session as completed
+            if (session.isConfirmed)
+              ListTile(
+                leading: const Icon(Icons.task_alt, color: Colors.blue),
+                title: const Text('Mark as Completed'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sessionService.completeSession(session.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Session marked as completed!'),
+                    ),
+                  );
+                },
+              ),
+            // Host can delete cancelled/completed sessions
+            if (isHost && (session.isCancelled || session.isCompleted))
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Session'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sessionService.deleteSession(session.id);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -201,7 +341,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
             _buildCalendar(),
             const SizedBox(height: AppConstants.paddingL),
 
-            // Select a Time
+            // Select a Time - free picker
             const Text(
               'Select a Time',
               style: TextStyle(
@@ -211,44 +351,81 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
               ),
             ),
             const SizedBox(height: AppConstants.paddingM),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _timeSlots.map((time) {
-                  final isSelected = time == _selectedTime;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 12.0),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedTime = time;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.primary
-                                : AppColors.borderLight,
-                          ),
-                        ),
-                        child: Text(
-                          time,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+            GestureDetector(
+              onTap: _pickTime,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                  border: Border.all(color: AppColors.primary),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time, color: AppColors.primary),
+                    const SizedBox(width: 12),
+                    Text(
+                      _formatTimeOfDay(_selectedTime),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
                       ),
                     ),
-                  );
-                }).toList(),
+                    const Spacer(),
+                    const Text(
+                      'Tap to change',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppConstants.paddingL),
+
+            // Subject selection
+            const Text(
+              'Subject',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: AppConstants.paddingM),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.paddingM,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedSubject.isEmpty ? null : _selectedSubject,
+                  isExpanded: true,
+                  hint: const Text(
+                    'Select a subject (optional)',
+                    style: TextStyle(color: AppColors.textLight),
+                  ),
+                  items: _defaultSubjects.map((subject) {
+                    return DropdownMenuItem<String>(
+                      value: subject,
+                      child: Text(subject),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() => _selectedSubject = value ?? '');
+                  },
+                ),
               ),
             ),
             const SizedBox(height: AppConstants.paddingL),
@@ -263,23 +440,14 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
             ),
             const SizedBox(height: AppConstants.paddingXL),
 
-            // Upcoming Sessions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Upcoming Sessions',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => _showAllSessions(),
-                  child: const Text('See All'),
-                ),
-              ],
+            // Upcoming Sessions — streams BOTH host and guest sessions
+            const Text(
+              'Your Sessions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: AppConstants.paddingM),
             _buildSessionsList(),
@@ -291,10 +459,14 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   }
 
   Widget _buildCalendar() {
-    final now = DateTime.now();
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final firstWeekday = DateTime(now.year, now.month, 1).weekday % 7;
-    
+    final daysInMonth = DateTime(
+      _selectedDate.year,
+      _selectedDate.month + 1,
+      0,
+    ).day;
+    final firstWeekday =
+        DateTime(_selectedDate.year, _selectedDate.month, 1).weekday % 7;
+
     return Column(
       children: [
         Row(
@@ -302,15 +474,31 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.arrow_back_ios, size: 16),
-              onPressed: () {},
+              onPressed: () {
+                setState(() {
+                  _selectedDate = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month - 1,
+                    1,
+                  );
+                });
+              },
             ),
             Text(
-              '${_getMonthName(now.month)} ${now.year}',
+              '${_getMonthName(_selectedDate.month)} ${_selectedDate.year}',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             IconButton(
               icon: const Icon(Icons.arrow_forward_ios, size: 16),
-              onPressed: () {},
+              onPressed: () {
+                setState(() {
+                  _selectedDate = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month + 1,
+                    1,
+                  );
+                });
+              },
             ),
           ],
         ),
@@ -337,8 +525,18 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
 
   String _getMonthName(int month) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return months[month - 1];
   }
@@ -354,21 +552,31 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
       itemCount: 42,
       itemBuilder: (context, index) {
         final day = index - firstWeekday + 1;
-        
+
         if (day < 1 || day > daysInMonth) {
           return const SizedBox();
         }
 
-        final date = DateTime(DateTime.now().year, DateTime.now().month, day);
-        final isSelected = _selectedDate.day == day && 
-                          _selectedDate.month == DateTime.now().month;
+        final date = DateTime(_selectedDate.year, _selectedDate.month, day);
+        final isSelected =
+            _selectedDate.day == day &&
+            _selectedDate.month == date.month &&
+            _selectedDate.year == date.year;
+        final isToday =
+            date.day == DateTime.now().day &&
+            date.month == DateTime.now().month &&
+            date.year == DateTime.now().year;
 
         return GestureDetector(
           onTap: () => _onDateSelected(date),
           child: Container(
-            margin: const EdgeInsets.all(6),
+            margin: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : Colors.transparent,
+              color: isSelected
+                  ? AppColors.primary
+                  : isToday
+                  ? AppColors.primary.withAlpha(40)
+                  : Colors.transparent,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -376,7 +584,9 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
               '$day',
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.black,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isSelected || isToday
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               ),
             ),
           ),
@@ -390,8 +600,8 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
       return const Center(child: Text('Please log in'));
     }
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _sessionService.streamUserSessions(),
+    return StreamBuilder<List<StudySession>>(
+      stream: _sessionService.streamAllUserSessions(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -401,8 +611,8 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final sessions = snapshot.data?.docs ?? [];
-        
+        final sessions = snapshot.data ?? [];
+
         if (sessions.isEmpty) {
           return Container(
             padding: const EdgeInsets.all(AppConstants.paddingL),
@@ -412,7 +622,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
             ),
             child: const Center(
               child: Text(
-                'No upcoming sessions\nSchedule one now!',
+                'No sessions yet\nSchedule one now!',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary),
               ),
@@ -421,8 +631,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
         }
 
         return Column(
-          children: sessions.take(3).map((doc) {
-            final session = StudySession.fromDoc(doc);
+          children: sessions.map((session) {
             return _buildSessionCard(session);
           }).toList(),
         );
@@ -431,84 +640,209 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   }
 
   Widget _buildSessionCard(StudySession session) {
+    // Show the OTHER user's profile (host sees guest, guest sees host)
+    final buddyUid = session.hostUid == _currentUid
+        ? session.guestUid
+        : session.hostUid;
+    final isHost = session.hostUid == _currentUid;
+
     return FutureBuilder<UserProfile?>(
-      future: _profileService.getProfile(session.guestUid),
+      future: _profileService.getProfile(buddyUid),
       builder: (context, snapshot) {
         final buddy = snapshot.data;
-        
-        return Container(
-          margin: const EdgeInsets.only(bottom: AppConstants.paddingM),
-          padding: const EdgeInsets.all(AppConstants.paddingM),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppConstants.radiusL),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: AppColors.backgroundLight,
-                backgroundImage: buddy?.photoUrl.isNotEmpty == true
-                    ? NetworkImage(buddy!.photoUrl)
-                    : null,
-                child: buddy?.photoUrl.isEmpty != false
-                    ? const Icon(Icons.person, color: AppColors.textSecondary)
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+
+        return GestureDetector(
+          onTap: () => _showSessionActions(session),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: AppConstants.paddingM),
+            padding: const EdgeInsets.all(AppConstants.paddingM),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppConstants.radiusL),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withAlpha(25),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
                   children: [
-                    Text(
-                      buddy?.fullName ?? 'Loading...',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.backgroundLight,
+                      backgroundImage: buddy?.photoUrl.isNotEmpty == true
+                          ? NetworkImage(buddy!.photoUrl)
+                          : null,
+                      child: buddy?.photoUrl.isEmpty != false
+                          ? const Icon(
+                              Icons.person,
+                              color: AppColors.textSecondary,
+                            )
+                          : null,
                     ),
-                    Text(
-                      session.subject,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDateTime(session.scheduledAt),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  buddy?.fullName ?? 'Loading...',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isHost
+                                      ? AppColors.primary.withAlpha(30)
+                                      : Colors.purple.withAlpha(30),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isHost ? 'Host' : 'Invited',
+                                  style: TextStyle(
+                                    color: isHost
+                                        ? AppColors.primary
+                                        : Colors.purple,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            session.subject,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatDateTime(session.scheduledAt),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: session.statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: session.statusColor.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        session.statusDisplay,
+                        style: TextStyle(
+                          color: session.statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    // Quick action hints
+                    if (!isHost && session.isPending)
+                      Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: () {
+                              _sessionService.confirmSession(session.id);
+                            },
+                            icon: const Icon(
+                              Icons.check,
+                              size: 16,
+                              color: Colors.green,
+                            ),
+                            label: const Text(
+                              'Accept',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () {
+                              _sessionService.cancelSession(session.id);
+                            },
+                            icon: const Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Colors.red,
+                            ),
+                            label: const Text(
+                              'Decline',
+                              style: TextStyle(fontSize: 12, color: Colors.red),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (session.isConfirmed)
+                      TextButton.icon(
+                        onPressed: () {
+                          _sessionService.completeSession(session.id);
+                        },
+                        icon: const Icon(
+                          Icons.task_alt,
+                          size: 16,
+                          color: Colors.blue,
+                        ),
+                        label: const Text(
+                          'Complete',
+                          style: TextStyle(fontSize: 12, color: Colors.blue),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                  ],
                 ),
-                child: Text(
-                  session.statusDisplay,
-                  style: TextStyle(
-                    color: session.statusColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -516,18 +850,25 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   }
 
   String _formatDateTime(DateTime dateTime) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour;
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final hour = dateTime.hour > 12
+        ? dateTime.hour - 12
+        : (dateTime.hour == 0 ? 12 : dateTime.hour);
     final ampm = dateTime.hour >= 12 ? 'PM' : 'AM';
     final minute = dateTime.minute.toString().padLeft(2, '0');
     return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year} at $hour:$minute $ampm';
-  }
-
-  void _showAllSessions() {
-    // Could navigate to a full sessions list screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All sessions view coming soon')),
-    );
   }
 }
