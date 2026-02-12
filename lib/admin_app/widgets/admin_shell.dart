@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/admin_auth_service.dart';
+import '../screens/admin_login_screen.dart';
 import '../screens/user_management/users_list_screen.dart';
 import '../screens/profile_monitoring/profile_audit_screen.dart';
 import '../screens/forum_moderation/forum_overview_screen.dart';
@@ -72,15 +73,9 @@ class _AdminShellState extends State<AdminShell> {
       selectedIcon: Icons.star,
       screen: const RatingsOverviewScreen(),
     ),
+
     _NavigationItem(
       index: 7,
-      label: 'Academics',
-      icon: Icons.school_outlined,
-      selectedIcon: Icons.school,
-      screen: const SubjectsScreen(),
-    ),
-    _NavigationItem(
-      index: 8,
       label: 'Registrations',
       icon: Icons.how_to_reg_outlined,
       selectedIcon: Icons.how_to_reg,
@@ -115,6 +110,13 @@ class _AdminShellState extends State<AdminShell> {
 
     if (confirmed == true) {
       await AdminAuthService().logout();
+      if (mounted) {
+        // Navigate to login screen and clear all routes
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
+          (route) => false,
+        );
+      }
     }
   }
 
@@ -126,28 +128,10 @@ class _AdminShellState extends State<AdminShell> {
       appBar: AppBar(
         title: Text(_navItems[_selectedIndex].label),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.account_circle,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  AdminAuthService().adminUsername,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(width: 16),
-                IconButton(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout),
-                  tooltip: 'Logout',
-                ),
-              ],
-            ),
+          IconButton(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
           ),
         ],
       ),

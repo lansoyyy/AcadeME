@@ -22,16 +22,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () {
-            if (onBack != null) {
-              onBack!();
-            } else {
-              Navigator.of(context).maybePop();
-            }
-          },
-        ),
+
         title: const Text(
           'Settings',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),

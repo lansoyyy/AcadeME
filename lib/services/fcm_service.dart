@@ -3,6 +3,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../models/notification.dart';
+import 'notification_service.dart';
 
 /// Service for handling Firebase Cloud Messaging (FCM) push notifications
 class FCMService {
@@ -28,7 +30,8 @@ class FCMService {
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       debugPrint('FCM: User granted permission');
       await _setupFCM();
-    } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+    } else if (settings.authorizationStatus ==
+        AuthorizationStatus.provisional) {
       debugPrint('FCM: User granted provisional permission');
     } else {
       debugPrint('FCM: User declined permission');
@@ -68,11 +71,11 @@ class FCMService {
           .collection('fcmTokens')
           .doc(token)
           .set({
-        'token': token,
-        'platform': _getPlatform(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastUpdatedAt': FieldValue.serverTimestamp(),
-      });
+            'token': token,
+            'platform': _getPlatform(),
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastUpdatedAt': FieldValue.serverTimestamp(),
+          });
       debugPrint('FCM: Token saved successfully');
     } catch (e) {
       debugPrint('FCM: Error saving token: $e');
@@ -101,15 +104,50 @@ class FCMService {
     }
   }
 
-  /// Handle foreground messages
-  void _handleForegroundMessage(RemoteMessage message) {
+  /// Handle foreground messages - creates local notification in Firestore
+  void _handleForegroundMessage(RemoteMessage message) async {
     debugPrint('FCM: Foreground message received');
     debugPrint('Message data: ${message.data}');
 
-    if (message.notification != null) {
-      debugPrint('Notification: ${message.notification?.title}');
-      // Show local notification or in-app toast
+    final notification = message.notification;
+    if (notification != null) {
+      debugPrint('Notification: ${notification.title}');
+
+      // Create notification in Firestore for in-app notification center
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        final notificationService = NotificationService();
+        notificationService.initialize();
+
+        final type = _parseNotificationType(message.data['type']);
+        await notificationService.createNotification(
+          uid: uid,
+          type: type,
+          title: notification.title ?? 'New Notification',
+          body: notification.body ?? '',
+          data: Map<String, dynamic>.from(message.data),
+        );
+      }
+
       _showInAppNotification(message);
+    }
+  }
+
+  /// Parse notification type from string
+  NotificationType _parseNotificationType(String? type) {
+    switch (type) {
+      case 'match':
+        return NotificationType.match;
+      case 'message':
+        return NotificationType.message;
+      case 'study_session':
+        return NotificationType.studySession;
+      case 'study_group':
+        return NotificationType.studyGroup;
+      case 'approval':
+        return NotificationType.approval;
+      default:
+        return NotificationType.system;
     }
   }
 

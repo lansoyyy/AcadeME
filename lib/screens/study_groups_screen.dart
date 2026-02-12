@@ -8,7 +8,8 @@ import '../utils/colors.dart';
 import '../utils/constants.dart';
 
 class StudyGroupsScreen extends StatefulWidget {
-  const StudyGroupsScreen({super.key});
+  final String? initialSubject;
+  const StudyGroupsScreen({super.key, this.initialSubject});
 
   @override
   State<StudyGroupsScreen> createState() => _StudyGroupsScreenState();
@@ -19,11 +20,13 @@ class _StudyGroupsScreenState extends State<StudyGroupsScreen>
   final StudyGroupService _groupService = StudyGroupService();
   final String? _currentUid = FirebaseAuth.instance.currentUser?.uid;
   late TabController _tabController;
+  String? _selectedSubject;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _selectedSubject = widget.initialSubject;
   }
 
   @override
@@ -216,7 +219,18 @@ class _StudyGroupsScreenState extends State<StudyGroupsScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final groups = snapshot.data ?? [];
+        var groups = snapshot.data ?? [];
+        // Filter by selected subject if provided
+        if (_selectedSubject != null && _selectedSubject!.isNotEmpty) {
+          groups = groups
+              .where(
+                (g) => g.subject.toLowerCase().contains(
+                  _selectedSubject!.toLowerCase(),
+                ),
+              )
+              .toList();
+        }
+
         if (groups.isEmpty) {
           return Center(
             child: Column(
@@ -224,9 +238,11 @@ class _StudyGroupsScreenState extends State<StudyGroupsScreen>
               children: [
                 Icon(Icons.search_off, size: 80, color: Colors.grey[300]),
                 const SizedBox(height: 16),
-                const Text(
-                  'No groups available',
-                  style: TextStyle(
+                Text(
+                  _selectedSubject != null
+                      ? 'No groups found for "$_selectedSubject"'
+                      : 'No groups available',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textSecondary,
@@ -237,19 +253,68 @@ class _StudyGroupsScreenState extends State<StudyGroupsScreen>
                   'Be the first to create one!',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
+                if (_selectedSubject != null) ...[
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => setState(() => _selectedSubject = null),
+                    child: const Text('Clear Filter'),
+                  ),
+                ],
               ],
             ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(AppConstants.paddingM),
-          itemCount: groups.length,
-          itemBuilder: (context, index) {
-            final group = groups[index];
-            final isMember = group.members.contains(_currentUid);
-            return _buildGroupCard(group, isMember: isMember);
-          },
+        return Column(
+          children: [
+            if (_selectedSubject != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                margin: const EdgeInsets.all(AppConstants.paddingM),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(30),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.filter_list,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Showing groups for: $_selectedSubject',
+                        style: const TextStyle(color: AppColors.primary),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _selectedSubject = null),
+                      child: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(AppConstants.paddingM),
+                itemCount: groups.length,
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  final isMember = group.members.contains(_currentUid);
+                  return _buildGroupCard(group, isMember: isMember);
+                },
+              ),
+            ),
+          ],
         );
       },
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/study_groups_screen.dart';
 import '../services/academic_data_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
@@ -153,16 +154,7 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () {
-            if (widget.onBack != null) {
-              widget.onBack!();
-            } else {
-              Navigator.of(context).maybePop();
-            }
-          },
-        ),
+
         title: const Text(
           'Lesson Selection',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
@@ -233,9 +225,14 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
 
                         return GestureDetector(
                           onTap: () {
-                            setState(() {
-                              _selectedCode = code;
-                            });
+                            // Navigate to StudyGroupsScreen with the selected subject
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    StudyGroupsScreen(initialSubject: name),
+                              ),
+                            );
                           },
                           child: Container(
                             padding: const EdgeInsets.all(

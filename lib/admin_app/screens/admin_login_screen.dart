@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/admin_auth_service.dart';
+import '../widgets/admin_shell.dart';
 
 /// Admin Login Screen
 /// Authenticates using hardcoded credentials
@@ -26,28 +27,40 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    debugPrint('Login button pressed');
+
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('Form validation failed');
+      return;
+    }
+    debugPrint('Form validation passed');
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    final success = await AdminAuthService().login(
-      _usernameController.text.trim(),
-      _passwordController.text,
-    );
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+    debugPrint('Calling AdminAuthService.login() with username: $username');
+
+    final success = await AdminAuthService().login(username, password);
+    debugPrint('Login result: $success');
 
     if (!mounted) return;
 
     setState(() => _isLoading = false);
 
-    if (!success) {
+    if (success) {
+      // Navigate to AdminShell directly
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const AdminShell()));
+    } else {
       setState(() {
         _errorMessage = 'Invalid username or password';
       });
     }
-    // If successful, AdminApp will automatically rebuild and show AdminShell
   }
 
   @override

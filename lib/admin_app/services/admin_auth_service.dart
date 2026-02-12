@@ -26,31 +26,27 @@ class AdminAuthService extends ChangeNotifier {
     // Can be enhanced later if needed
   }
 
-  /// Login with hardcoded credentials and sign into Firebase Auth
+  /// Login with hardcoded credentials only (no Firebase Auth required)
   /// Returns true if successful
   Future<bool> login(String username, String password) async {
-    // Validate against hardcoded credentials
-    if (username == AdminConfig.adminUsername &&
-        password == AdminConfig.adminPassword) {
+    debugPrint('AdminAuthService.hashCode: ${hashCode}');
+    debugPrint(
+      'Admin login attempt: username="$username", password="${password.isNotEmpty ? "***" : "empty"}"',
+    );
+
+    // Hardcoded admin check - no Firebase Auth needed
+    if (username == 'admin' && password == 'academe_admin_2026') {
       _isAuthenticated = true;
       _adminUsername = username;
-
-      // Also sign into Firebase Auth for Firestore permissions
-      try {
-        final credential = await FirebaseAuth.instance
-            .signInWithEmailAndPassword(
-              email: AdminConfig.adminEmail,
-              password: AdminConfig.adminFirebasePassword,
-            );
-        _firebaseUser = credential.user;
-      } catch (e) {
-        debugPrint('Admin Firebase sign-in failed: $e');
-        // Still allow UI login even if Firebase fails - will show error in UI
-      }
-
+      debugPrint('Admin login SUCCESS - isAuthenticated: $_isAuthenticated');
+      debugPrint('Admin login SUCCESS - Calling notifyListeners()');
       notifyListeners();
+      debugPrint(
+        'Admin login SUCCESS - notifyListeners() called, listener count: ${hasListeners ? "has listeners" : "NO LISTENERS!"}',
+      );
       return true;
     }
+    debugPrint('Admin login FAILED: invalid credentials');
     return false;
   }
 

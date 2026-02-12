@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_profile.dart';
+import '../services/notification_service.dart';
 import '../services/user_profile_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/profile_completeness_gate.dart';
 import 'find_buddy_screen.dart';
 import 'lesson_selection_screen.dart';
-import 'study_groups_screen.dart';
+import 'notification_screen.dart';
 import 'settings_screen.dart';
+import 'study_groups_screen.dart';
 import 'matches_list_screen.dart';
 import 'schedule_session_screen.dart';
 
@@ -127,14 +129,7 @@ class HomeDashboard extends StatelessWidget {
                       const SizedBox(width: 8),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.notifications_outlined,
-                      color: Colors.black,
-                      size: 28,
-                    ),
-                    onPressed: () {},
-                  ),
+                  _buildNotificationButtonWithBadge(context, uid),
                 ],
               ),
               const SizedBox(height: AppConstants.paddingS),
@@ -155,7 +150,7 @@ class HomeDashboard extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: AppConstants.paddingM,
                 mainAxisSpacing: AppConstants.paddingM,
-                childAspectRatio: 1.1,
+                childAspectRatio: 1.3,
                 children: [
                   _buildMenuCard(
                     context,
@@ -252,11 +247,31 @@ class HomeDashboard extends StatelessWidget {
                     _buildCourseCard(
                       'COR 005\nGeneral Mathematics',
                       Icons.calculate,
+                      onContinue: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StudyGroupsScreen(
+                              initialSubject: 'General Mathematics',
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: AppConstants.paddingM),
                     _buildCourseCard(
                       'STM 003\nGeneral Physics 1',
                       Icons.science,
+                      onContinue: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StudyGroupsScreen(
+                              initialSubject: 'General Physics 1',
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     // Add more cards as needed
                   ],
@@ -370,7 +385,11 @@ class HomeDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildCourseCard(String title, IconData icon) {
+  Widget _buildCourseCard(
+    String title,
+    IconData icon, {
+    VoidCallback? onContinue,
+  }) {
     return Container(
       width: 280,
       padding: const EdgeInsets.all(AppConstants.paddingM),
@@ -407,7 +426,7 @@ class HomeDashboard extends StatelessWidget {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: onContinue,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -429,6 +448,62 @@ class HomeDashboard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNotificationButtonWithBadge(BuildContext context, String uid) {
+    final notificationService = NotificationService();
+    notificationService.initialize();
+
+    return StreamBuilder<int>(
+      stream: notificationService.streamUnreadCount(uid),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+
+        return Stack(
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.black,
+                size: 28,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                );
+              },
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

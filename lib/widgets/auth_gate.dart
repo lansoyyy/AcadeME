@@ -40,6 +40,8 @@ class AuthGate extends StatelessWidget {
               return const ProfileCreationScreen(canGoBack: false);
             }
 
+            print(profile.accountStatus);
+
             // Check account approval status
             if (profile.isPending) {
               return const PendingApprovalScreen(status: 'pending');

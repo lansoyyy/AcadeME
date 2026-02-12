@@ -11,9 +11,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Hardcoded admin email check
-      // Admin must sign in with: admin@academe.app / AcadeME_Admin_2026!
-      return isAuthenticated() && request.auth.token.email == 'admin@academe.app';
+      // NOTE: Pure hardcoded admin (no Firebase Auth) cannot be verified in Firestore rules
+      // without Cloud Functions. Admin UI uses local state only.
+      // For secure admin operations, deploy Cloud Functions or use Firebase Auth with pre-created admin account.
+      return false;
     }
 
     // Users collection - any authenticated user can read profiles (needed for chat, matches, sessions)
@@ -150,6 +151,14 @@ service cloud.firestore {
     match /academic/{doc=**} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+    }
+
+    // Notifications collection - user can read own, system/admin can create
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid || isAdmin();
+      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
     }
   }
 }
