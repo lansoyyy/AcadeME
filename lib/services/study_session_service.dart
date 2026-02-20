@@ -141,6 +141,43 @@ class StudySessionService {
     await _sessionsRef.doc(sessionId).delete();
   }
 
+  /// Get all sessions for current user (as Future)
+  Future<List<StudySession>> getAllUserSessions() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    final hostSnapshot = await _sessionsRef
+        .where('hostUid', isEqualTo: currentUser.uid)
+        .get();
+
+    final guestSnapshot = await _sessionsRef
+        .where('guestUid', isEqualTo: currentUser.uid)
+        .get();
+
+    final allDocs = <String, DocumentSnapshot<Map<String, dynamic>>>{};
+    for (final doc in hostSnapshot.docs) {
+      allDocs[doc.id] = doc;
+    }
+    for (final doc in guestSnapshot.docs) {
+      allDocs[doc.id] = doc;
+    }
+
+    final sessions = allDocs.values
+        .map((doc) {
+          try {
+            return StudySession.fromDoc(doc);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<StudySession>()
+        .toList();
+    sessions.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    return sessions;
+  }
+
   /// Get session by ID
   Future<DocumentSnapshot<Map<String, dynamic>>?> getSession(
     String sessionId,

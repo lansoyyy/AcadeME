@@ -6,6 +6,7 @@ import '../services/user_profile_service.dart';
 import 'edit_profile_screen.dart';
 import 'notification_preferences_screen.dart';
 import 'privacy_settings_screen.dart';
+import 'about_academe_screen.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 
@@ -140,7 +141,14 @@ class SettingsScreen extends StatelessWidget {
           _buildSettingsItem(
             icon: Icons.info,
             title: 'About AcadeME',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AboutAcademeScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: AppConstants.paddingL),
           _buildSettingsItem(

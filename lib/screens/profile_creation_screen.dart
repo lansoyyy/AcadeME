@@ -72,51 +72,125 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
         // Use Firestore data if available, otherwise fallback to defaults
         _tracks = tracksData.isNotEmpty
             ? tracksData.map((s) => s['name'] as String).toList()
-            : ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
+            : ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'];
         _gradeLevels = gradeLevelsData.isNotEmpty
             ? gradeLevelsData.map((g) => g['value'] as int).toList()
             : [11, 12];
         _subjects = subjectsData.isNotEmpty
             ? subjectsData
-            : [
-                {'name': 'Oral Communication', 'code': 'OC'},
-                {'name': 'General Mathematics', 'code': 'GM'},
-                {'name': 'English for Academic', 'code': 'EAP'},
-                {'name': 'Filipino', 'code': 'FIL'},
-                {'name': '21st Century Literature', 'code': '21LIT'},
-                {'name': 'Contemporary Arts', 'code': 'CA'},
-                {'name': 'Media and Information Literacy', 'code': 'MIL'},
-                {'name': 'Physical Education', 'code': 'PE'},
-                {'name': 'Earth Science', 'code': 'ES'},
-                {'name': 'General Chemistry', 'code': 'CHEM'},
-                {'name': 'Basic Calculus', 'code': 'CALC'},
-                {'name': 'Physics', 'code': 'PHY'},
-              ];
+            : _getComprehensiveSubjects();
         _isLoadingAcademicData = false;
       });
     } catch (e) {
       debugPrint('Error loading academic data: $e');
       // Use fallback data on error
       setState(() {
-        _tracks = ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS'];
+        _tracks = ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'];
         _gradeLevels = [11, 12];
-        _subjects = [
-          {'name': 'Oral Communication', 'code': 'OC'},
-          {'name': 'General Mathematics', 'code': 'GM'},
-          {'name': 'English for Academic', 'code': 'EAP'},
-          {'name': 'Filipino', 'code': 'FIL'},
-          {'name': '21st Century Literature', 'code': '21LIT'},
-          {'name': 'Contemporary Arts', 'code': 'CA'},
-          {'name': 'Media and Information Literacy', 'code': 'MIL'},
-          {'name': 'Physical Education', 'code': 'PE'},
-          {'name': 'Earth Science', 'code': 'ES'},
-          {'name': 'General Chemistry', 'code': 'CHEM'},
-          {'name': 'Basic Calculus', 'code': 'CALC'},
-          {'name': 'Physics', 'code': 'PHY'},
-        ];
+        _subjects = _getComprehensiveSubjects();
         _isLoadingAcademicData = false;
       });
     }
+  }
+
+  List<Map<String, dynamic>> _getComprehensiveSubjects() {
+    return [
+      // Core Subjects
+      {'name': 'Oral Communication', 'code': 'OC'},
+      {'name': 'Reading and Writing Skills', 'code': 'RWS'},
+      {'name': '21st Century Literature', 'code': '21LIT'},
+      {'name': 'Media and Information Literacy', 'code': 'MIL'},
+      {'name': 'Physical Education and Health', 'code': 'PEH'},
+      {'name': 'Personal Development', 'code': 'PDEV'},
+      {'name': 'Understanding Culture, Society and Politics', 'code': 'UCSP'},
+
+      // Applied Subjects
+      {
+        'name': 'English for Academic and Professional Purposes',
+        'code': 'EAPP',
+      },
+      {'name': 'Practical Research 1', 'code': 'PR1'},
+      {'name': 'Practical Research 2', 'code': 'PR2'},
+      {'name': 'Filipino sa Piling Larang', 'code': 'FPL'},
+      {'name': 'Inquiries, Investigations and Immersion', 'code': 'III'},
+
+      // Specialized Subjects - STEM
+      {'name': 'Pre-Calculus', 'code': 'PCAL'},
+      {'name': 'Basic Calculus', 'code': 'CALC'},
+      {'name': 'General Biology 1', 'code': 'GBIO1'},
+      {'name': 'General Biology 2', 'code': 'GBIO2'},
+      {'name': 'General Physics 1', 'code': 'GPHY1'},
+      {'name': 'General Physics 2', 'code': 'GPHY2'},
+      {'name': 'General Chemistry 1', 'code': 'GCHEM1'},
+      {'name': 'General Chemistry 2', 'code': 'GCHEM2'},
+      {'name': 'Work Immersion', 'code': 'WI'},
+
+      // Specialized Subjects - ABM
+      {'name': 'Accountancy, Business and Management 1', 'code': 'ABM1'},
+      {'name': 'Accountancy, Business and Management 2', 'code': 'ABM2'},
+      {
+        'name': 'Fundamentals of Accountancy, Business and Management 1',
+        'code': 'FABM1',
+      },
+      {
+        'name': 'Fundamentals of Accountancy, Business and Management 2',
+        'code': 'FABM2',
+      },
+      {'name': 'Business Math', 'code': 'BMATH'},
+      {'name': 'Business Finance', 'code': 'BFIN'},
+      {'name': 'Organization and Management', 'code': 'ORM'},
+      {'name': 'Principles of Marketing', 'code': 'POM'},
+
+      // Specialized Subjects - HUMSS
+      {
+        'name': 'Introduction to World Religions and Belief Systems',
+        'code': 'WRBS',
+      },
+      {'name': 'Creative Writing', 'code': 'CW'},
+      {'name': 'Creative Nonfiction', 'code': 'CNF'},
+      {'name': 'Trends, Networks and Critical Thinking', 'code': 'TNCT'},
+      {'name': 'Philippine Politics and Governance', 'code': 'PPG'},
+      {
+        'name': 'Community Engagement, Solidarity and Citizenship',
+        'code': 'CESC',
+      },
+      {'name': 'Disciplines and Ideas in the Social Sciences', 'code': 'DISS'},
+      {
+        'name': 'Disciplines and Ideas in the Applied Social Sciences',
+        'code': 'DIASS',
+      },
+
+      // Specialized Subjects - STEM-H (Health)
+      {'name': 'Anatomy and Physiology', 'code': 'ANAPHY'},
+      {'name': 'Microbiology and Parasitology', 'code': 'MIPAR'},
+      {'name': 'Medical Terminology', 'code': 'MEDTERM'},
+      {'name': 'Health Education', 'code': 'HEALTED'},
+      {'name': 'Drug Education', 'code': 'DRUGED'},
+      {'name': 'First Aid and Safety', 'code': 'FAS'},
+      {'name': 'Nutrition', 'code': 'NUTRI'},
+
+      // Specialized Subjects - GAS
+      {'name': 'Disaster Readiness and Risk Reduction', 'code': 'DRRR'},
+      {'name': 'Elective 1', 'code': 'ELEC1'},
+      {'name': 'Elective 2', 'code': 'ELEC2'},
+      {'name': 'Elective 3', 'code': 'ELEC3'},
+
+      // Other Core Subjects
+      {'name': 'General Mathematics', 'code': 'GM'},
+      {'name': 'Statistics and Probability', 'code': 'STAT'},
+      {'name': 'Earth and Life Science', 'code': 'ELS'},
+      {'name': 'Earth Science', 'code': 'ES'},
+      {'name': 'Physical Science', 'code': 'PS'},
+      {'name': 'Introduction to Philosophy', 'code': 'PHILO'},
+      {'name': 'Physical Education 1', 'code': 'PE1'},
+      {'name': 'Physical Education 2', 'code': 'PE2'},
+      {'name': 'Physical Education 3', 'code': 'PE3'},
+      {'name': 'Physical Education 4', 'code': 'PE4'},
+      {'name': 'Health 1', 'code': 'H1'},
+      {'name': 'Health 2', 'code': 'H2'},
+      {'name': 'Health 3', 'code': 'H3'},
+      {'name': 'Health 4', 'code': 'H4'},
+    ];
   }
 
   @override

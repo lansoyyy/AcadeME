@@ -8,6 +8,7 @@ import '../services/chat_media_service.dart';
 import '../services/swipe_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
+import '../utils/content_filter.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversationId;
@@ -65,19 +66,35 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _isSending = true);
 
     try {
+      // Filter bad words from the message before sending
+      final filteredText = ContentFilter.filterText(text);
+
       await _conversationService.sendTextMessage(
         conversationId: widget.conversationId,
         senderId: _currentUid!,
-        text: text,
+        text: filteredText,
       );
 
       _messageController.clear();
       _scrollToBottom();
+
+      // Show notification if message was filtered
+      if (text != filteredText && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your message has been filtered for inappropriate content.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send message: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSending = false);
@@ -184,7 +201,9 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _conversationService.streamMessages(widget.conversationId),
+              stream: _conversationService.streamMessages(
+                widget.conversationId,
+              ),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -224,26 +243,16 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 64,
-            color: AppColors.textLight,
-          ),
+          Icon(Icons.chat_bubble_outline, size: 64, color: AppColors.textLight),
           const SizedBox(height: AppConstants.paddingM),
           Text(
             'Start chatting with ${widget.otherUser.fullName}',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
           ),
           const SizedBox(height: AppConstants.paddingS),
           Text(
             'Say hello and plan your study session!',
-            style: TextStyle(
-              color: AppColors.textLight,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: AppColors.textLight, fontSize: 14),
           ),
         ],
       ),
@@ -271,7 +280,9 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isMe) ...[
             CircleAvatar(
@@ -288,7 +299,9 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (!isMe)
                   Padding(
@@ -308,8 +321,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
-                      bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-                      bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                      bottomLeft: isMe
+                          ? const Radius.circular(16)
+                          : Radius.zero,
+                      bottomRight: isMe
+                          ? Radius.zero
+                          : const Radius.circular(16),
                     ),
                     boxShadow: [
                       if (!isMe)
@@ -321,7 +338,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                   child: Text(
-                    text ?? '',
+                    ContentFilter.filterText(text ?? ''),
                     style: TextStyle(
                       color: isMe ? Colors.white : Colors.black,
                       fontSize: 14,
@@ -341,7 +358,9 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isMe) ...[
             CircleAvatar(
@@ -358,7 +377,9 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (!isMe)
                   Padding(
@@ -382,8 +403,12 @@ class _ChatScreenState extends State<ChatScreen> {
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
                         topRight: const Radius.circular(16),
-                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-                        bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                        bottomLeft: isMe
+                            ? const Radius.circular(16)
+                            : Radius.zero,
+                        bottomRight: isMe
+                            ? Radius.zero
+                            : const Radius.circular(16),
                       ),
                       boxShadow: [
                         if (!isMe)
@@ -459,10 +484,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         child: Text(
           text,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
       ),
     );
@@ -499,9 +521,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
                     : const Icon(
@@ -539,7 +559,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: (_isSending || _isUploadingImage) ? AppColors.textLight : AppColors.primary,
+                  color: (_isSending || _isUploadingImage)
+                      ? AppColors.textLight
+                      : AppColors.primary,
                   shape: BoxShape.circle,
                 ),
                 child: _isSending
@@ -570,7 +592,10 @@ class _ChatScreenState extends State<ChatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              leading: const Icon(
+                Icons.photo_library,
+                color: AppColors.primary,
+              ),
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);
@@ -628,9 +653,9 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to send image: $e')));
       }
     } finally {
       if (mounted) setState(() => _isUploadingImage = false);
@@ -638,7 +663,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showReportDialog() {
-    final reasons = ['Inappropriate content', 'Harassment', 'Fake profile', 'Spam', 'Other'];
+    final reasons = [
+      'Inappropriate content',
+      'Harassment',
+      'Fake profile',
+      'Spam',
+      'Other',
+    ];
     showDialog(
       context: context,
       builder: (context) => SimpleDialog(
@@ -681,7 +712,9 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Block User'),
-        content: Text('Are you sure you want to block ${widget.otherUser.fullName}?'),
+        content: Text(
+          'Are you sure you want to block ${widget.otherUser.fullName}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -699,7 +732,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (mounted) {
                     Navigator.pop(context); // Go back to matches list
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${widget.otherUser.fullName} blocked')),
+                      SnackBar(
+                        content: Text('${widget.otherUser.fullName} blocked'),
+                      ),
                     );
                   }
                 } catch (e) {

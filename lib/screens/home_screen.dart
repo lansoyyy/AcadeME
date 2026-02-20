@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_profile.dart';
 import '../services/notification_service.dart';
 import '../services/user_profile_service.dart';
+import '../services/study_session_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/profile_completeness_gate.dart';
@@ -13,6 +14,8 @@ import 'settings_screen.dart';
 import 'study_groups_screen.dart';
 import 'matches_list_screen.dart';
 import 'schedule_session_screen.dart';
+import 'weekly_goal_screen.dart';
+import 'subjects_studied_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -76,8 +79,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class HomeDashboard extends StatelessWidget {
+class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
+
+  @override
+  State<HomeDashboard> createState() => _HomeDashboardState();
+}
+
+class _HomeDashboardState extends State<HomeDashboard> {
+  final StudySessionService _sessionService = StudySessionService();
 
   @override
   Widget build(BuildContext context) {
@@ -224,9 +234,78 @@ class HomeDashboard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppConstants.paddingM),
-              _buildProgressItem('Weekly Goal', '5/8 sessions', 0.6),
-              const SizedBox(height: AppConstants.paddingM),
-              _buildProgressItem('Subjects Studied', '3/5 subjects', 0.6),
+              StreamBuilder<List<StudySession>>(
+                stream: _sessionService.streamAllUserSessions(),
+                builder: (context, sessionSnapshot) {
+                  final sessions = sessionSnapshot.data ?? [];
+
+                  // Get weekly goal from profile
+                  final studyGoals = profile?.studyGoals ?? [];
+                  int weeklyGoal = 8; // Default
+                  if (studyGoals.isNotEmpty) {
+                    final goal = int.tryParse(studyGoals.first);
+                    if (goal != null && goal > 0) {
+                      weeklyGoal = goal;
+                    }
+                  }
+
+                  // Filter sessions for current week (Monday to Sunday)
+                  final now = DateTime.now();
+                  final weekStart = _getWeekStart(now);
+                  final weekEnd = weekStart.add(const Duration(days: 7));
+
+                  final weeklySessions = sessions
+                      .where(
+                        (s) =>
+                            s.scheduledAt.isAfter(weekStart) &&
+                            s.scheduledAt.isBefore(weekEnd),
+                      )
+                      .toList();
+
+                  final completedSessions = weeklySessions
+                      .where((s) => s.isCompleted)
+                      .length;
+
+                  final weeklyProgress = weeklyGoal > 0
+                      ? (completedSessions / weeklyGoal).clamp(0.0, 1.0)
+                      : 0.0;
+
+                  // Get subjects count from profile
+                  final subjectsCount = profile?.subjectsInterested.length ?? 0;
+                  return Column(
+                    children: [
+                      _buildProgressItem(
+                        'Weekly Goal',
+                        '$completedSessions/$weeklyGoal sessions',
+                        weeklyProgress,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const WeeklyGoalScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: AppConstants.paddingM),
+                      _buildProgressItem(
+                        'Subjects Studied',
+                        '$subjectsCount subjects',
+                        subjectsCount > 0 ? 1.0 : 0.0,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const SubjectsStudiedScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: AppConstants.paddingXL),
 
               // Pick Up Where You Left Off
@@ -285,6 +364,13 @@ class HomeDashboard extends StatelessWidget {
     );
   }
 
+  DateTime _getWeekStart(DateTime date) {
+    // Get Monday of the current week
+    final dayOfWeek = date.weekday;
+    final monday = date.subtract(Duration(days: dayOfWeek - 1));
+    return DateTime(monday.year, monday.month, monday.day);
+  }
+
   Widget _buildMenuCard(
     BuildContext context, {
     required IconData icon,
@@ -341,46 +427,54 @@ class HomeDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressItem(String title, String value, double progress) {
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.paddingM),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppConstants.radiusL),
-        border: Border.all(color: AppColors.backgroundLight),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
+  Widget _buildProgressItem(
+    String title,
+    String value,
+    double progress, {
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppConstants.paddingM),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppConstants.radiusL),
+          border: Border.all(color: AppColors.backgroundLight),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 13,
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: AppColors.backgroundLight,
-              color: AppColors.primary,
-              minHeight: 8,
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: AppColors.backgroundLight,
+                color: AppColors.primary,
+                minHeight: 8,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
