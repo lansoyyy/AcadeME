@@ -71,7 +71,7 @@ class AboutAcademeScreen extends StatelessWidget {
               title: 'Our Mission',
               icon: Icons.flag,
               content:
-                  '''AcadeME is a dedicated academic platform designed to streamline learning experience for students. By providing tools for goal setting, subject tracking, and collaborative discussion, AcadeME aims to foster a disciplined and supportive environment for academic excellence.''',
+                  '''AcadeME is a dedicated academic platform designed to streamline the learning experience for students. By providing tools for goal setting, subject tracking, and collaborative discussion, AcadeME aims to foster a disciplined and supportive environment for academic excellence.''',
             ),
 
             const SizedBox(height: AppConstants.paddingL),
@@ -81,15 +81,15 @@ class AboutAcademeScreen extends StatelessWidget {
               title: 'Terms and Conditions',
               icon: Icons.gavel,
               content:
-                  '''By using AcadeME, you agree to abide by following terms:
+                  '''By using AcadeME, you agree to abide by the following terms:
 
 • User Conduct: Users are expected to maintain academic integrity and professional decorum. The use of profanity, harassment, or "bad words" in chat rooms is strictly prohibited and may result in account restriction.
 
-• Account Responsibility: You are responsible for maintaining confidentiality of your login credentials.
+• Account Responsibility: You are responsible for maintaining the confidentiality of your login credentials.
 
-• Content Usage: All materials provided within app are for educational purposes only. Unauthorized distribution of platform content is prohibited.
+• Content Usage: All materials provided within the app are for educational purposes only. Unauthorized distribution of platform content is prohibited.
 
-• Service Modifications: AcadeME reserves right to update features, tracks, and subject lists to better serve student body.''',
+• Service Modifications: AcadeME reserves the right to update features, tracks, and subject lists to better serve the student body.''',
             ),
 
             const SizedBox(height: AppConstants.paddingL),
@@ -99,15 +99,30 @@ class AboutAcademeScreen extends StatelessWidget {
               title: 'Data Privacy Act Statement',
               icon: Icons.security,
               content:
-                  '''In compliance with Republic Act No. 10173, also known as Data Privacy Act of 2012, AcadeME is committed to protecting your personal information.
+                  '''In compliance with Republic Act No. 10173 (Data Privacy Act of 2012)
 
-• Information Collection: We collect basic profile information (Name, Academic Track, and Selected Subjects) to personalize your study dashboard and facilitate admin approval.
+AcadeME values your privacy and is committed to protecting the personal information you share with us. By registering an account, you acknowledge and agree to the following terms regarding your data:
 
-• Purpose of Processing: Your data is used solely for account verification, academic tracking, internal app improvements, and research purposes.
+• Academic Research Purpose: You are hereby informed that AcadeME is a Capstone Project developed for academic purposes. The data collected—including user study habits, frequency of feature use, and academic tracks—will be utilized as primary data for the researchers' capstone thesis completion.
 
-• Data Protection: We implement technical and organizational security measures to protect your data from unauthorized access or disclosure.
+• Information Collection: We collect specific personal and academic information, including your full name, email address, grade level, strand, and list of enrolled subjects.
 
-• User Rights: You have right to ask for a copy of any personal information we hold about you, as well as to ask for it to be corrected if you think it is erroneous.''',
+• Data Processing & Anonymity: For the purpose of the final research report, all data will be anonymous. Individual identities will be protected, and results will be presented as aggregate statistics.
+
+• Confidentiality & Storage: Your data is stored in a secure database accessible only to the authorized Capstone Research Team and their Faculty Adviser. No data will be shared with third-party entities or used for commercial marketing.
+
+• Data Retention: Upon the successful completion and defense of this Capstone Project, all personal identifiable information will be permanently deleted from our servers, unless otherwise required for institutional archiving.
+
+• Consent: By clicking continuing to use the application, you provide your explicit consent for the researchers to process your information for the aforementioned academic study.
+
+User Rights
+Under the Data Privacy Act, you retain the right to:
+
+1. Access: Request a copy of the data we have collected about your app usage.
+
+2. Correction: Request the rectification of any errors in your profile (e.g., wrong Track/Strand).
+
+3. Withdrawal: Withdraw your consent and request the deletion of your account if you no longer wish to participate in the research study.''',
             ),
 
             const SizedBox(height: AppConstants.paddingXL),
