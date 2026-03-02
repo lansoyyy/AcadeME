@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../models/notification.dart';
 import 'notification_service.dart';
@@ -16,6 +18,7 @@ class FCMService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<User?>? _authStateSubscription;
 
   /// Initialize FCM and request permissions
   Future<void> initialize() async {
@@ -33,20 +36,40 @@ class FCMService {
     } else if (settings.authorizationStatus ==
         AuthorizationStatus.provisional) {
       debugPrint('FCM: User granted provisional permission');
+      await _setupFCM(); // Still set up FCM for provisional notifications
     } else {
       debugPrint('FCM: User declined permission');
+      // Still set up message listeners; token won't deliver alerts but
+      // data-only messages and future permission grants will still work.
+      await _setupFCM();
     }
   }
 
   /// Setup FCM token and listeners
   Future<void> _setupFCM() async {
-    // Get initial token
-    final token = await _messaging.getToken();
-    if (token != null) {
-      await _saveToken(token);
+    // Save token immediately if a user is already signed in
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _saveToken(token);
+      }
     }
 
-    // Listen for token refresh
+    // Also save the token whenever a user signs in (covers the case where
+    // FCM initialises before login, which is the most common app-start flow).
+    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen(
+      (user) async {
+        if (user != null) {
+          final token = await _messaging.getToken();
+          if (token != null) {
+            await _saveToken(token);
+          }
+        }
+      },
+    );
+
+    // Listen for token refresh (device token can rotate)
     _tokenRefreshSubscription = _messaging.onTokenRefresh.listen(
       (newToken) => _saveToken(newToken),
       onError: (err) => debugPrint('FCM Token refresh error: $err'),
@@ -117,7 +140,6 @@ class FCMService {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         final notificationService = NotificationService();
-        notificationService.initialize();
 
         final type = _parseNotificationType(message.data['type']);
         await notificationService.createNotification(
@@ -181,14 +203,19 @@ class FCMService {
 
   /// Get device platform string
   String _getPlatform() {
-    // Simplified platform detection
-    // In production, use dart:io Platform or package_info_plus
+    if (kIsWeb) return 'web';
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isMacOS) return 'macos';
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isLinux) return 'linux';
     return 'unknown';
   }
 
   /// Cleanup
   void dispose() {
     _tokenRefreshSubscription?.cancel();
+    _authStateSubscription?.cancel();
   }
 }
 

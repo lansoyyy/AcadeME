@@ -10,12 +10,19 @@ service firebase.storage {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Profile photos: profile_photos/{uid}.jpg
-    match /profile_photos/{userId} {
+    // Profile photos: profile_photos/{uid}/profile.jpg
+    // The folder-based path ensures {userId} matches the UID exactly.
+    match /profile_photos/{userId}/{fileName} {
       // Anyone authenticated can view profile photos
       allow read: if isAuthenticated();
-      // Only owner can upload their own photo
+      // Only the owner can upload/replace their own photo
       allow write: if isOwner(userId);
+    }
+
+    // Legacy rule: keep read access for old flat-path uploads (profile_photos/{uid}.jpg)
+    match /profile_photos/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if false; // No new writes to the old flat path
     }
 
     // Chat attachments: chat_attachments/{conversationId}/{messageId}/{filename}
