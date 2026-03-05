@@ -201,7 +201,9 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   Future<void> _completeSessionWithRating(StudySession session) async {
     int selectedRating = 0;
     final feedbackCtrl = TextEditingController();
-    final buddyUid = session.hostUid == _currentUid ? session.guestUid : session.hostUid;
+    final buddyUid = session.hostUid == _currentUid
+        ? session.guestUid
+        : session.hostUid;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -212,7 +214,10 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('How was your study session?', style: TextStyle(fontSize: 16)),
+              const Text(
+                'How was your study session?',
+                style: TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -246,7 +251,9 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
               child: const Text('Skip'),
             ),
             FilledButton(
-              onPressed: selectedRating == 0 ? null : () => Navigator.pop(ctx, true),
+              onPressed: selectedRating == 0
+                  ? null
+                  : () => Navigator.pop(ctx, true),
               child: const Text('Submit'),
             ),
           ],
@@ -278,7 +285,8 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     }
   }
 
-  Future<void> _createSession(String buddyUid, DateTime scheduledAt) async {    setState(() => _isLoading = true);
+  Future<void> _createSession(String buddyUid, DateTime scheduledAt) async {
+    setState(() => _isLoading = true);
 
     try {
       final subject = _selectedSubject.isNotEmpty

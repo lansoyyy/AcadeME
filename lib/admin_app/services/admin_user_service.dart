@@ -40,13 +40,13 @@ class AdminUserService {
   /// Add warning to user
   Future<void> addWarning(String uid, String reason) async {
     final userRef = _firestore.collection('users').doc(uid);
-    
+
     await _firestore.runTransaction((transaction) async {
       final userDoc = await transaction.get(userRef);
       if (!userDoc.exists) return;
 
       final currentWarnings = userDoc.data()?['warningsCount'] ?? 0;
-      
+
       transaction.update(userRef, {
         'warningsCount': currentWarnings + 1,
         'lastWarningAt': FieldValue.serverTimestamp(),
@@ -77,7 +77,7 @@ class AdminUserService {
           'field': fieldName,
           'reason': reason,
           'flaggedAt': FieldValue.serverTimestamp(),
-        }
+        },
       ]),
       'updatedAt': FieldValue.serverTimestamp(),
     });

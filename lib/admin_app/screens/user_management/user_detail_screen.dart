@@ -19,9 +19,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('User Details'),
-      ),
+      appBar: AppBar(title: const Text('User Details')),
       body: FutureBuilder<DocumentSnapshot?>(
         future: _userService.getUser(widget.uid),
         builder: (context, snapshot) {
@@ -69,18 +67,29 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         children: [
           CircleAvatar(
             radius: 50,
-            backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-            child: photoUrl.isEmpty ? Text(name[0].toUpperCase(), style: const TextStyle(fontSize: 32)) : null,
+            backgroundImage: photoUrl.isNotEmpty
+                ? NetworkImage(photoUrl)
+                : null,
+            child: photoUrl.isEmpty
+                ? Text(
+                    name[0].toUpperCase(),
+                    style: const TextStyle(fontSize: 32),
+                  )
+                : null,
           ),
           const SizedBox(height: 16),
           Text(
             name,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             track,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
           ),
         ],
       ),
@@ -92,7 +101,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     final suspendedUntil = data['suspendedUntil'] as Timestamp?;
     final warningsCount = data['warningsCount'] ?? 0;
 
-    final isSuspended = suspendedUntil != null && suspendedUntil.toDate().isAfter(DateTime.now());
+    final isSuspended =
+        suspendedUntil != null &&
+        suspendedUntil.toDate().isAfter(DateTime.now());
 
     return Card(
       child: Padding(
@@ -100,7 +111,12 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Account Status', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Account Status',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -114,7 +130,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  isSuspended ? 'Suspended' : (isActive ? 'Active' : 'Deactivated'),
+                  isSuspended
+                      ? 'Suspended'
+                      : (isActive ? 'Active' : 'Deactivated'),
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
               ],
@@ -127,7 +145,10 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               ),
             ],
             const SizedBox(height: 12),
-            Text('Warnings: $warningsCount', style: TextStyle(color: Colors.grey[600])),
+            Text(
+              'Warnings: $warningsCount',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
           ],
         ),
       ),
@@ -141,20 +162,34 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Profile Information', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Profile Information',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             _buildInfoRow('Student ID', data['studentId'] ?? 'N/A'),
-            _buildInfoRow('Grade Level', 'Grade ${data['gradeLevel'] ?? 'N/A'}'),
+            _buildInfoRow(
+              'Grade Level',
+              'Grade ${data['gradeLevel'] ?? 'N/A'}',
+            ),
             _buildInfoRow('Age', '${data['age'] ?? 'N/A'}'),
             _buildInfoRow('Birthday', data['birthday'] ?? 'N/A'),
             const Divider(),
             _buildInfoRow('Bio', data['bio'] ?? 'No bio'),
             const SizedBox(height: 12),
-            Text('Subjects Interested:', style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text(
+              'Subjects Interested:',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
             Wrap(
               spacing: 8,
               children: ((data['subjectsInterested'] as List?) ?? []).map((s) {
-                return Chip(label: Text(s.toString()), visualDensity: VisualDensity.compact);
+                return Chip(
+                  label: Text(s.toString()),
+                  visualDensity: VisualDensity.compact,
+                );
               }).toList(),
             ),
           ],
@@ -169,8 +204,16 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: TextStyle(color: Colors.grey[600]))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
+          SizedBox(
+            width: 120,
+            child: Text(label, style: TextStyle(color: Colors.grey[600])),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );
@@ -185,7 +228,12 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Admin Actions', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Admin Actions',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 12,
@@ -228,12 +276,20 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(activate ? 'Activate Account?' : 'Deactivate Account?'),
-        content: Text(activate
-            ? 'This user will be able to access the app again.'
-            : 'This user will be blocked from accessing the app.'),
+        content: Text(
+          activate
+              ? 'This user will be able to access the app again.'
+              : 'This user will be blocked from accessing the app.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
         ],
       ),
     );
@@ -250,7 +306,11 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(activate ? 'Account activated' : 'Account deactivated')),
+          SnackBar(
+            content: Text(
+              activate ? 'Account activated' : 'Account deactivated',
+            ),
+          ),
         );
         setState(() {});
       }
@@ -279,8 +339,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, selectedDays), child: const Text('Suspend')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, selectedDays),
+              child: const Text('Suspend'),
+            ),
           ],
         );
       },
@@ -292,7 +358,8 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       await _userService.sendNotificationToUser(
         uid: widget.uid,
         title: 'Account Suspended',
-        body: 'Your account has been suspended for $days day(s) by an administrator. Access will be restored on ${until.month}/${until.day}/${until.year}.',
+        body:
+            'Your account has been suspended for $days day(s) by an administrator. Access will be restored on ${until.month}/${until.day}/${until.year}.',
         type: 'admin_action',
       );
       if (mounted) {
@@ -317,7 +384,10 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
             maxLines: 3,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
               onPressed: () => Navigator.pop(context, controller.text),
               child: const Text('Issue'),
@@ -332,13 +402,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       await _userService.sendNotificationToUser(
         uid: widget.uid,
         title: 'Warning Issued',
-        body: 'An administrator has issued a warning on your account. Reason: $reason. Please review the community guidelines.',
+        body:
+            'An administrator has issued a warning on your account. Reason: $reason. Please review the community guidelines.',
         type: 'admin_action',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Warning issued')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Warning issued')));
         setState(() {});
       }
     }
@@ -358,8 +429,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         title: const Text('Reset Password?'),
         content: Text('Send password reset email to $email?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Send')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Send'),
+          ),
         ],
       ),
     );
@@ -369,7 +446,8 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       await _userService.sendNotificationToUser(
         uid: widget.uid,
         title: 'Password Reset Requested',
-        body: 'An administrator has initiated a password reset for your account. Check your email ($email) for the reset link.',
+        body:
+            'An administrator has initiated a password reset for your account. Check your email ($email) for the reset link.',
         type: 'admin_action',
       );
       if (mounted) {

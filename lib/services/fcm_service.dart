@@ -58,16 +58,16 @@ class FCMService {
 
     // Also save the token whenever a user signs in (covers the case where
     // FCM initialises before login, which is the most common app-start flow).
-    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen(
-      (user) async {
-        if (user != null) {
-          final token = await _messaging.getToken();
-          if (token != null) {
-            await _saveToken(token);
-          }
+    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
+      if (user != null) {
+        final token = await _messaging.getToken();
+        if (token != null) {
+          await _saveToken(token);
         }
-      },
-    );
+      }
+    });
 
     // Listen for token refresh (device token can rotate)
     _tokenRefreshSubscription = _messaging.onTokenRefresh.listen(

@@ -637,7 +637,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     if (eligibleUids.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('All your matches are already in this group, or you have no matches yet.'),
+          content: Text(
+            'All your matches are already in this group, or you have no matches yet.',
+          ),
         ),
       );
       return;

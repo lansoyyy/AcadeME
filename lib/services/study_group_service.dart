@@ -191,13 +191,16 @@ class StudyGroupService {
 
     // Notify the invited user
     try {
-      final inviterProfile = await UserProfileService().getProfile(currentUser.uid);
+      final inviterProfile = await UserProfileService().getProfile(
+        currentUser.uid,
+      );
       final inviterName = inviterProfile?.fullName ?? 'Your study buddy';
       await NotificationService().createNotification(
         uid: invitedUid,
         type: NotificationType.studyGroup,
         title: 'Added to Study Group',
-        body: '$inviterName added you to "$groupName"'
+        body:
+            '$inviterName added you to "$groupName"'
             '${subject.isNotEmpty ? ' ($subject)' : ''}. Open Study Groups to join the chat!',
         data: {'groupId': groupId, 'route': '/study_groups'},
       );

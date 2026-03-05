@@ -106,7 +106,10 @@ class _ReportCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _getStatusColor(status),
                     borderRadius: BorderRadius.circular(4),
@@ -134,7 +137,10 @@ class _ReportCard extends StatelessWidget {
             ),
             Text(
               'Reported: $reportedUid',
-              style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.red),
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.red,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -186,15 +192,18 @@ class _ReportCard extends StatelessWidget {
   }
 
   Future<void> _updateStatus(BuildContext context, String newStatus) async {
-    await FirebaseFirestore.instance.collection('reports').doc(report.id).update({
-      'status': newStatus,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await FirebaseFirestore.instance
+        .collection('reports')
+        .doc(report.id)
+        .update({
+          'status': newStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Report marked as $newStatus')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Report marked as $newStatus')));
     }
   }
 
@@ -239,11 +248,15 @@ class _ReportCard extends StatelessWidget {
       try {
         switch (action) {
           case 'warning':
-            await adminService.addWarning(reportedUid, 'Reported by another user');
+            await adminService.addWarning(
+              reportedUid,
+              'Reported by another user',
+            );
             await adminService.sendNotificationToUser(
               uid: reportedUid,
               title: 'Warning Issued',
-              body: 'Your account has received a warning due to a user report. Please review our community guidelines.',
+              body:
+                  'Your account has received a warning due to a user report. Please review our community guidelines.',
               type: 'admin_action',
             );
             break;
@@ -253,7 +266,8 @@ class _ReportCard extends StatelessWidget {
             await adminService.sendNotificationToUser(
               uid: reportedUid,
               title: 'Account Suspended',
-              body: 'Your account has been suspended for 7 days due to a user report.',
+              body:
+                  'Your account has been suspended for 7 days due to a user report.',
               type: 'admin_action',
             );
             break;
@@ -262,7 +276,8 @@ class _ReportCard extends StatelessWidget {
             await adminService.sendNotificationToUser(
               uid: reportedUid,
               title: 'Account Deactivated',
-              body: 'Your account has been deactivated due to a user report. Please contact support.',
+              body:
+                  'Your account has been deactivated due to a user report. Please contact support.',
               type: 'admin_action',
             );
             break;
@@ -271,24 +286,27 @@ class _ReportCard extends StatelessWidget {
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error applying action: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error applying action: $e')));
         }
       }
     }
 
     if (action != null) {
-      await FirebaseFirestore.instance.collection('reports').doc(report.id).update({
-        'status': 'resolved',
-        'actionTaken': action,
-        'resolvedAt': FieldValue.serverTimestamp(),
-      });
+      await FirebaseFirestore.instance
+          .collection('reports')
+          .doc(report.id)
+          .update({
+            'status': 'resolved',
+            'actionTaken': action,
+            'resolvedAt': FieldValue.serverTimestamp(),
+          });
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Report resolved: $action')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Report resolved: $action')));
       }
     }
   }

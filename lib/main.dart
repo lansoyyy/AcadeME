@@ -42,9 +42,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'AcadeME',
       theme: AppTheme.lightTheme,
-      home: const PresenceWrapper(
-        child: AuthGate(),
-      ),
+      home: const PresenceWrapper(child: AuthGate()),
       debugShowCheckedModeBanner: false,
     );
   }

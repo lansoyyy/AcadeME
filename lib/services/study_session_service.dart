@@ -43,7 +43,9 @@ class StudySessionService {
 
     // Notify the guest that they have been invited to a session
     try {
-      final hostProfile = await UserProfileService().getProfile(currentUser.uid);
+      final hostProfile = await UserProfileService().getProfile(
+        currentUser.uid,
+      );
       final hostName = hostProfile?.fullName ?? 'Someone';
       await NotificationService().notifyStudySession(
         uid: guestUid,

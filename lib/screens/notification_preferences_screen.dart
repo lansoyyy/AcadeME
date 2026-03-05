@@ -10,10 +10,12 @@ class NotificationPreferencesScreen extends StatefulWidget {
   const NotificationPreferencesScreen({super.key});
 
   @override
-  State<NotificationPreferencesScreen> createState() => _NotificationPreferencesScreenState();
+  State<NotificationPreferencesScreen> createState() =>
+      _NotificationPreferencesScreenState();
 }
 
-class _NotificationPreferencesScreenState extends State<NotificationPreferencesScreen> {
+class _NotificationPreferencesScreenState
+    extends State<NotificationPreferencesScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _currentUid;
   bool _isLoading = true;
@@ -76,13 +78,13 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
           .collection('settings')
           .doc('notifications')
           .set({
-        'newMatches': _newMatches,
-        'newMessages': _newMessages,
-        'sessionReminders': _sessionReminders,
-        'studyTips': _studyTips,
-        'marketingNotifications': _marketingNotifications,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+            'newMatches': _newMatches,
+            'newMessages': _newMessages,
+            'sessionReminders': _sessionReminders,
+            'studyTips': _studyTips,
+            'marketingNotifications': _marketingNotifications,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
       // Update FCM topic subscriptions so the server can target this device
       await FCMService().updateTopicSubscriptions(
@@ -94,15 +96,15 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Preferences saved')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Preferences saved')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving preferences: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving preferences: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -154,14 +156,16 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
                       title: 'New Messages',
                       subtitle: 'When someone sends you a message',
                       value: _newMessages,
-                      onChanged: (value) => setState(() => _newMessages = value),
+                      onChanged: (value) =>
+                          setState(() => _newMessages = value),
                     ),
                     _buildSwitchTile(
                       icon: Icons.calendar_today,
                       title: 'Session Reminders',
                       subtitle: 'Reminders before scheduled study sessions',
                       value: _sessionReminders,
-                      onChanged: (value) => setState(() => _sessionReminders = value),
+                      onChanged: (value) =>
+                          setState(() => _sessionReminders = value),
                     ),
                     const SizedBox(height: AppConstants.paddingXL),
                     const Text(
@@ -184,7 +188,8 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
                       title: 'Marketing & Promotions',
                       subtitle: 'New features and special offers',
                       value: _marketingNotifications,
-                      onChanged: (value) => setState(() => _marketingNotifications = value),
+                      onChanged: (value) =>
+                          setState(() => _marketingNotifications = value),
                     ),
                     const SizedBox(height: AppConstants.paddingXL),
                     CustomButton(

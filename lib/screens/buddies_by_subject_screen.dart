@@ -76,7 +76,9 @@ class _BuddiesBySubjectScreenState extends State<BuddiesBySubjectScreen> {
           final interests = (data['subjectsInterested'] as List<dynamic>? ?? [])
               .map((e) => e.toString().toLowerCase())
               .toList();
-          if (interests.any((s) => s.contains(subjectLower) || subjectLower.contains(s))) {
+          if (interests.any(
+            (s) => s.contains(subjectLower) || subjectLower.contains(s),
+          )) {
             seenUids.add(uid);
             results.add(UserProfile.fromMap(uid, data));
           }
@@ -133,7 +135,9 @@ class _BuddiesBySubjectScreenState extends State<BuddiesBySubjectScreen> {
           .where('participants', arrayContains: _currentUid)
           .get();
       for (final doc in snap.docs) {
-        final participants = List<String>.from(doc.data()['participants'] ?? []);
+        final participants = List<String>.from(
+          doc.data()['participants'] ?? [],
+        );
         if (participants.contains(otherUid)) return doc.id;
       }
     } catch (_) {}
@@ -155,7 +159,11 @@ class _BuddiesBySubjectScreenState extends State<BuddiesBySubjectScreen> {
           children: [
             const Text(
               'Study Buddies',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             Text(
               widget.subject,
@@ -168,69 +176,77 @@ class _BuddiesBySubjectScreenState extends State<BuddiesBySubjectScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Error: $_error', textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _loadBuddies, child: const Text('Retry')),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Error: $_error', textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadBuddies,
+                    child: const Text('Retry'),
                   ),
-                )
-              : _buddies.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.search_off, size: 80, color: Colors.grey[300]),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No buddies found for this subject yet.',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Try browsing all buddies from the main screen.',
-                            style: TextStyle(color: AppColors.textLight),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(AppConstants.paddingM),
-                      itemCount: _buddies.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final buddy = _buddies[index];
-                        return _BuddyCard(
-                          buddy: buddy,
-                          isMatched: false, // will be computed below
-                          onMessage: () async {
-                            final convId = await _getConversationId(buddy.uid);
-                            if (convId != null && context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ChatScreen(
-                                    conversationId: convId,
-                                    otherUser: buddy,
-                                  ),
-                                ),
-                              );
-                            } else if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('You need to match with this buddy first to message them.'),
-                                ),
-                              );
-                            }
-                          },
-                        );
-                      },
+                ],
+              ),
+            )
+          : _buddies.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search_off, size: 80, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No buddies found for this subject yet.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
                     ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Try browsing all buddies from the main screen.',
+                    style: TextStyle(color: AppColors.textLight),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(AppConstants.paddingM),
+              itemCount: _buddies.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final buddy = _buddies[index];
+                return _BuddyCard(
+                  buddy: buddy,
+                  isMatched: false, // will be computed below
+                  onMessage: () async {
+                    final convId = await _getConversationId(buddy.uid);
+                    if (convId != null && context.mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            conversationId: convId,
+                            otherUser: buddy,
+                          ),
+                        ),
+                      );
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'You need to match with this buddy first to message them.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+            ),
     );
   }
 }
@@ -266,11 +282,18 @@ class _BuddyCard extends StatelessWidget {
           CircleAvatar(
             radius: 28,
             backgroundColor: AppColors.backgroundLight,
-            backgroundImage: buddy.photoUrl.isNotEmpty ? NetworkImage(buddy.photoUrl) : null,
+            backgroundImage: buddy.photoUrl.isNotEmpty
+                ? NetworkImage(buddy.photoUrl)
+                : null,
             child: buddy.photoUrl.isEmpty
                 ? Text(
-                    buddy.fullName.isNotEmpty ? buddy.fullName[0].toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    buddy.fullName.isNotEmpty
+                        ? buddy.fullName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   )
                 : null,
           ),
@@ -281,12 +304,18 @@ class _BuddyCard extends StatelessWidget {
               children: [
                 Text(
                   buddy.fullName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${buddy.track} • Grade ${buddy.gradeLevel}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 if (buddy.bio.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -294,7 +323,10 @@ class _BuddyCard extends StatelessWidget {
                     buddy.bio,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.textLight, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
                 if (buddy.subjectsInterested.isNotEmpty) ...[
@@ -304,12 +336,21 @@ class _BuddyCard extends StatelessWidget {
                     runSpacing: 2,
                     children: buddy.subjectsInterested.take(3).map((s) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withAlpha(30),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(s, style: const TextStyle(fontSize: 10, color: AppColors.primary)),
+                        child: Text(
+                          s,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       );
                     }).toList(),
                   ),
@@ -320,7 +361,10 @@ class _BuddyCard extends StatelessWidget {
           const SizedBox(width: 8),
           IconButton(
             onPressed: onMessage,
-            icon: const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
+            icon: const Icon(
+              Icons.chat_bubble_outline,
+              color: AppColors.primary,
+            ),
             tooltip: 'Message',
           ),
         ],

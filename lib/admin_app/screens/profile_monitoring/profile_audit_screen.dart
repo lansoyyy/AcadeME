@@ -28,7 +28,8 @@ class _ProfileAuditScreenState extends State<ProfileAuditScreen> {
               ButtonSegment(value: 'flagged', label: Text('Flagged')),
             ],
             selected: {_selectedFilter},
-            onSelectionChanged: (set) => setState(() => _selectedFilter = set.first),
+            onSelectionChanged: (set) =>
+                setState(() => _selectedFilter = set.first),
           ),
         ),
         Expanded(
@@ -45,9 +46,19 @@ class _ProfileAuditScreenState extends State<ProfileAuditScreen> {
               var users = snapshot.data!.docs;
 
               if (_selectedFilter == 'incomplete') {
-                users = users.where((u) => _isIncomplete(u.data() as Map<String, dynamic>)).toList();
+                users = users
+                    .where(
+                      (u) => _isIncomplete(u.data() as Map<String, dynamic>),
+                    )
+                    .toList();
               } else if (_selectedFilter == 'flagged') {
-                users = users.where((u) => _hasInappropriateContent(u.data() as Map<String, dynamic>)).toList();
+                users = users
+                    .where(
+                      (u) => _hasInappropriateContent(
+                        u.data() as Map<String, dynamic>,
+                      ),
+                    )
+                    .toList();
               }
 
               return ListView.builder(
@@ -72,16 +83,18 @@ class _ProfileAuditScreenState extends State<ProfileAuditScreen> {
 
   bool _isIncomplete(Map<String, dynamic> data) {
     return (data['photoUrl'] ?? '').isEmpty ||
-           (data['track'] ?? '').isEmpty ||
-           (data['bio'] ?? '').isEmpty ||
-           ((data['subjectsInterested'] as List?)?.isEmpty ?? true);
+        (data['track'] ?? '').isEmpty ||
+        (data['bio'] ?? '').isEmpty ||
+        ((data['subjectsInterested'] as List?)?.isEmpty ?? true);
   }
 
   bool _hasInappropriateContent(Map<String, dynamic> data) {
     final name = (data['fullName'] ?? '').toString().toLowerCase();
     final bio = (data['bio'] ?? '').toString().toLowerCase();
     final flaggedWords = ['inappropriate', 'spam', 'fake', 'test', 'admin'];
-    final hasWordFlag = flaggedWords.any((word) => name.contains(word) || bio.contains(word));
+    final hasWordFlag = flaggedWords.any(
+      (word) => name.contains(word) || bio.contains(word),
+    );
     final isExplicitlyFlagged = data['isFlagged'] == true;
     return hasWordFlag || isExplicitlyFlagged;
   }
@@ -115,11 +128,19 @@ class _ProfileAuditTile extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${data['track'] ?? 'No track'} • Grade ${data['gradeLevel'] ?? '?'}'),
+          Text(
+            '${data['track'] ?? 'No track'} • Grade ${data['gradeLevel'] ?? '?'}',
+          ),
           if (isIncomplete)
-            const Text('⚠️ Incomplete profile', style: TextStyle(color: Colors.orange)),
+            const Text(
+              '⚠️ Incomplete profile',
+              style: TextStyle(color: Colors.orange),
+            ),
           if (isFlagged)
-            const Text('🚩 Flagged content', style: TextStyle(color: Colors.red)),
+            const Text(
+              '🚩 Flagged content',
+              style: TextStyle(color: Colors.red),
+            ),
         ],
       ),
       isThreeLine: isIncomplete || isFlagged,
@@ -143,10 +164,28 @@ class _ProfileAuditTile extends StatelessWidget {
           }
         },
         itemBuilder: (_) => [
-          const PopupMenuItem(value: 'view', child: ListTile(leading: Icon(Icons.person), title: Text('View Full Profile'))),
-          const PopupMenuItem(value: 'flag', child: ListTile(leading: Icon(Icons.flag, color: Colors.red), title: Text('Flag Profile'))),
+          const PopupMenuItem(
+            value: 'view',
+            child: ListTile(
+              leading: Icon(Icons.person),
+              title: Text('View Full Profile'),
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'flag',
+            child: ListTile(
+              leading: Icon(Icons.flag, color: Colors.red),
+              title: Text('Flag Profile'),
+            ),
+          ),
           if (isExplicitlyFlagged)
-            const PopupMenuItem(value: 'unflag', child: ListTile(leading: Icon(Icons.flag_outlined), title: Text('Remove Flag'))),
+            const PopupMenuItem(
+              value: 'unflag',
+              child: ListTile(
+                leading: Icon(Icons.flag_outlined),
+                title: Text('Remove Flag'),
+              ),
+            ),
         ],
       ),
       onTap: () {
@@ -175,7 +214,10 @@ class _ProfileAuditTile extends StatelessWidget {
                 items: const [
                   DropdownMenuItem(value: 'bio', child: Text('Bio')),
                   DropdownMenuItem(value: 'fullName', child: Text('Full Name')),
-                  DropdownMenuItem(value: 'photoUrl', child: Text('Profile Photo')),
+                  DropdownMenuItem(
+                    value: 'photoUrl',
+                    child: Text('Profile Photo'),
+                  ),
                   DropdownMenuItem(value: 'other', child: Text('Other')),
                 ],
                 onChanged: (v) => setst(() => selectedField = v ?? 'bio'),
@@ -183,20 +225,32 @@ class _ProfileAuditTile extends StatelessWidget {
               const SizedBox(height: 12),
               TextField(
                 controller: reasonCtrl,
-                decoration: const InputDecoration(labelText: 'Reason for flagging'),
+                decoration: const InputDecoration(
+                  labelText: 'Reason for flagging',
+                ),
                 maxLines: 2,
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Flag')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Flag'),
+            ),
           ],
         ),
       ),
     );
     if (confirmed == true && reasonCtrl.text.trim().isNotEmpty) {
-      await AdminUserService().flagProfile(uid, selectedField, reasonCtrl.text.trim());
+      await AdminUserService().flagProfile(
+        uid,
+        selectedField,
+        reasonCtrl.text.trim(),
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Profile field "$selectedField" flagged')),
