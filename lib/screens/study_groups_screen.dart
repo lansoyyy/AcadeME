@@ -624,6 +624,108 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     );
   }
 
+  Future<void> _showInviteDialog() async {
+    // Load matched buddy UIDs
+    final matchedUids = await _groupService.getMatchedBuddyUids();
+    // Exclude those already in the group
+    final eligibleUids = matchedUids
+        .where((uid) => !widget.group.members.contains(uid))
+        .toList();
+
+    if (!mounted) return;
+
+    if (eligibleUids.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All your matches are already in this group, or you have no matches yet.'),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (ctx, scrollCtrl) => Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Invite a Match',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollCtrl,
+                itemCount: eligibleUids.length,
+                itemBuilder: (context, index) {
+                  final uid = eligibleUids[index];
+                  return FutureBuilder<UserProfile?>(
+                    future: _profileService.getProfile(uid),
+                    builder: (context, snap) {
+                      final profile = snap.data;
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: profile?.photoUrl.isNotEmpty == true
+                              ? NetworkImage(profile!.photoUrl)
+                              : null,
+                          child: profile?.photoUrl.isEmpty != false
+                              ? Text(
+                                  (profile?.fullName.isNotEmpty == true)
+                                      ? profile!.fullName[0].toUpperCase()
+                                      : '?',
+                                )
+                              : null,
+                        ),
+                        title: Text(profile?.fullName ?? 'Loading...'),
+                        subtitle: Text(
+                          '${profile?.track ?? ''} • Grade ${profile?.gradeLevel ?? ''}',
+                        ),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            try {
+                              await _groupService.inviteToGroup(
+                                groupId: widget.group.id,
+                                invitedUid: uid,
+                              );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${profile?.fullName ?? 'User'} has been added to the group!',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(SnackBar(content: Text('$e')));
+                              }
+                            }
+                          },
+                          child: const Text('Invite'),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -656,6 +758,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add, color: Colors.black),
+            onPressed: _showInviteDialog,
+            tooltip: 'Invite a Match',
+          ),
           IconButton(
             icon: const Icon(Icons.people, color: Colors.black),
             onPressed: _showMembers,

@@ -3,12 +3,10 @@ import '../services/admin_auth_service.dart';
 import '../screens/admin_login_screen.dart';
 import '../screens/user_management/users_list_screen.dart';
 import '../screens/profile_monitoring/profile_audit_screen.dart';
-import '../screens/forum_moderation/forum_overview_screen.dart';
 import '../screens/match_monitoring/matches_overview_screen.dart';
 import '../screens/reports_blacklist/reports_list_screen.dart';
 import '../screens/analytics/analytics_dashboard_screen.dart';
 import '../screens/feedback_ratings/ratings_overview_screen.dart';
-import '../screens/academic_structure/subjects_screen.dart';
 import '../screens/registration_approval/registration_approval_screen.dart';
 
 /// AdminShell - Main navigation container for admin interface
@@ -61,21 +59,13 @@ class _AdminShellState extends State<AdminShell> {
     ),
     _NavigationItem(
       index: 5,
-      label: 'Forum',
-      icon: Icons.forum_outlined,
-      selectedIcon: Icons.forum,
-      screen: const ForumOverviewScreen(),
-    ),
-    _NavigationItem(
-      index: 6,
       label: 'Ratings',
       icon: Icons.star_outline,
       selectedIcon: Icons.star,
       screen: const RatingsOverviewScreen(),
     ),
-
     _NavigationItem(
-      index: 7,
+      index: 6,
       label: 'Registrations',
       icon: Icons.how_to_reg_outlined,
       selectedIcon: Icons.how_to_reg,

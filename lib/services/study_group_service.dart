@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/notification.dart';
+import 'notification_service.dart';
+import 'user_profile_service.dart';
 
 /// Service for managing study groups
 class StudyGroupService {
@@ -153,6 +156,73 @@ class StudyGroupService {
       'isActive': false,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Invite a matched buddy to the group (owner/member action).
+  /// Adds the invitedUid directly to the group and sends them a notification.
+  Future<void> inviteToGroup({
+    required String groupId,
+    required String invitedUid,
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) throw Exception('User not authenticated');
+
+    final doc = await _groupsRef.doc(groupId).get();
+    if (!doc.exists) throw Exception('Group not found');
+
+    final data = doc.data()!;
+    final members = List<String>.from(data['members'] ?? []);
+    final maxMembers = data['maxMembers'] as int? ?? 10;
+    final groupName = data['name'] as String? ?? 'the group';
+    final subject = data['subject'] as String? ?? '';
+
+    if (members.contains(invitedUid)) {
+      throw Exception('This user is already in the group');
+    }
+    if (members.length >= maxMembers) {
+      throw Exception('Group is full');
+    }
+
+    await _groupsRef.doc(groupId).update({
+      'members': FieldValue.arrayUnion([invitedUid]),
+      'memberCount': FieldValue.increment(1),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    // Notify the invited user
+    try {
+      final inviterProfile = await UserProfileService().getProfile(currentUser.uid);
+      final inviterName = inviterProfile?.fullName ?? 'Your study buddy';
+      await NotificationService().createNotification(
+        uid: invitedUid,
+        type: NotificationType.studyGroup,
+        title: 'Added to Study Group',
+        body: '$inviterName added you to "$groupName"'
+            '${subject.isNotEmpty ? ' ($subject)' : ''}. Open Study Groups to join the chat!',
+        data: {'groupId': groupId, 'route': '/study_groups'},
+      );
+    } catch (e) {
+      // Non-fatal: group was still joined
+    }
+  }
+
+  /// Get all matched buddy UIDs (and optionally their profiles) for the current user.
+  Future<List<String>> getMatchedBuddyUids() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return [];
+
+    final snap = await _firestore
+        .collection('matches')
+        .where('users', arrayContains: currentUser.uid)
+        .where('isActive', isEqualTo: true)
+        .get();
+
+    final uids = <String>[];
+    for (final doc in snap.docs) {
+      final users = List<String>.from(doc.data()['users'] ?? []);
+      uids.addAll(users.where((u) => u != currentUser.uid));
+    }
+    return uids;
   }
 
   /// Send a message to the group chat

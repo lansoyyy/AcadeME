@@ -37,6 +37,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   int _selectedGradeLevel = 11;
   final List<String> _selectedSubjects = [];
   final List<String> _selectedStudyGoals = [];
+  String _selectedSubjectFilter = 'All';
 
   // Academic data from Firestore
   List<String> _tracks = [];
@@ -72,6 +73,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       debugPrint('Error loading academic data: $e');
       setState(() => _isLoadingAcademicData = false);
     }
+  }
+
+  List<Map<String, dynamic>> _getFilteredSubjects() {
+    if (_selectedSubjectFilter == 'All') {
+      return _subjects;
+    }
+
+    // Filter by type (Core, Applied, Specialized)
+    if (_selectedSubjectFilter == 'Core' ||
+        _selectedSubjectFilter == 'Applied' ||
+        _selectedSubjectFilter == 'Specialized') {
+      return _subjects.where((subject) {
+        final type = subject['type'] as String? ?? '';
+        return type == _selectedSubjectFilter;
+      }).toList();
+    }
+
+    // Filter by strand (STEM, ABM, HUMSS, STEM-H, GAS)
+    return _subjects.where((subject) {
+      final strands = subject['strands'] as List<dynamic>? ?? [];
+      return strands.contains(_selectedSubjectFilter);
+    }).toList();
+  }
+
+  List<String> _getSubjectFilterOptions() {
+    final options = ['All', 'Core', 'Applied', 'Specialized'];
+
+    // Add strand-specific filters if a track is selected
+    if (_selectedTrack.isNotEmpty) {
+      options.add(_selectedTrack);
+    }
+
+    return options;
   }
 
   @override
@@ -519,32 +553,76 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _buildLabel('Subjects Interested In'),
                     _isLoadingAcademicData
                         ? const Center(child: CircularProgressIndicator())
-                        : Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _subjects.take(20).map<Widget>((subject) {
-                              final name = subject['name'] ?? '';
-                              final isSelected = _selectedSubjects.contains(
-                                name,
-                              );
-                              return FilterChip(
-                                label: Text(name),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      _selectedSubjects.add(name);
-                                    } else {
-                                      _selectedSubjects.remove(name);
-                                    }
-                                  });
-                                },
-                                selectedColor: AppColors.primary.withOpacity(
-                                  0.2,
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Filter Dropdown
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
                                 ),
-                                checkmarkColor: AppColors.primary,
-                              );
-                            }).toList(),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusM,
+                                  ),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedSubjectFilter,
+                                    isExpanded: true,
+                                    hint: const Text(
+                                      'Filter by type or strand',
+                                    ),
+                                    items: _getSubjectFilterOptions().map((
+                                      filter,
+                                    ) {
+                                      return DropdownMenuItem<String>(
+                                        value: filter,
+                                        child: Text(filter),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(
+                                        () => _selectedSubjectFilter =
+                                            value ?? 'All',
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppConstants.paddingM),
+                              // Subjects Chips
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _getFilteredSubjects().map<Widget>((
+                                  subject,
+                                ) {
+                                  final name = subject['name'] ?? '';
+                                  final isSelected = _selectedSubjects.contains(
+                                    name,
+                                  );
+                                  return FilterChip(
+                                    label: Text(name),
+                                    selected: isSelected,
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        if (selected) {
+                                          _selectedSubjects.add(name);
+                                        } else {
+                                          _selectedSubjects.remove(name);
+                                        }
+                                      });
+                                    },
+                                    selectedColor: AppColors.primary
+                                        .withOpacity(0.2),
+                                    checkmarkColor: AppColors.primary,
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ),
                     const SizedBox(height: AppConstants.paddingM),
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../screens/study_groups_screen.dart';
+import '../screens/buddies_by_subject_screen.dart';
 import '../services/academic_data_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
@@ -35,38 +35,52 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
         _subjects = subjects.isNotEmpty
             ? subjects
             : [
+                // Core Subjects
                 {'code': 'OC', 'name': 'Oral Communication', 'type': 'Core'},
+                {'code': 'RW', 'name': 'Reading and Writing', 'type': 'Core'},
                 {'code': 'GM', 'name': 'General Mathematics', 'type': 'Core'},
+                {'code': 'SP', 'name': 'Statistics and Probability', 'type': 'Core'},
                 {'code': 'EAP', 'name': 'English for Academic', 'type': 'Core'},
                 {'code': 'FIL', 'name': 'Filipino', 'type': 'Core'},
-                {
-                  'code': '21LIT',
-                  'name': '21st Century Literature',
-                  'type': 'Core',
-                },
+                {'code': '21LIT', 'name': '21st Century Literature', 'type': 'Core'},
                 {'code': 'CA', 'name': 'Contemporary Arts', 'type': 'Core'},
-                {
-                  'code': 'MIL',
-                  'name': 'Media and Information Literacy',
-                  'type': 'Core',
-                },
-                {'code': 'PE', 'name': 'Physical Education', 'type': 'Core'},
-                {'code': 'ES', 'name': 'Earth Science', 'type': 'Core'},
-                {'code': 'CHEM', 'name': 'General Chemistry', 'type': 'Core'},
-                {'code': 'CALC', 'name': 'Basic Calculus', 'type': 'Core'},
-                {'code': 'PHY', 'name': 'Physics', 'type': 'Core'},
-                {
-                  'code': 'ABM1',
-                  'name': 'Applied Economics',
-                  'type': 'Applied',
-                },
-                {'code': 'ABM2', 'name': 'Business Math', 'type': 'Applied'},
-                {
-                  'code': 'STEM1',
-                  'name': 'Pre-Calculus',
-                  'type': 'Specialized',
-                },
-                {'code': 'HUMSS1', 'name': 'Philosophy', 'type': 'Specialized'},
+                {'code': 'MIL', 'name': 'Media and Information Literacy', 'type': 'Core'},
+                {'code': 'PE1', 'name': 'Physical Education 1', 'type': 'Core'},
+                {'code': 'PE2', 'name': 'Physical Education 2', 'type': 'Core'},
+                {'code': 'HEALTH', 'name': 'Health', 'type': 'Core'},
+                {'code': 'PD', 'name': 'Personal Development', 'type': 'Core'},
+                {'code': 'UCSP', 'name': 'Understanding Culture, Society and Politics', 'type': 'Core'},
+                {'code': 'ELS', 'name': 'Earth and Life Science', 'type': 'Core'},
+                {'code': 'PS', 'name': 'Physical Science', 'type': 'Core'},
+                {'code': 'IP', 'name': 'Introduction to Philosophy', 'type': 'Core'},
+                // Applied
+                {'code': 'ENTREP', 'name': 'Entrepreneurship', 'type': 'Applied'},
+                {'code': 'TECH', 'name': 'Practical Research', 'type': 'Applied'},
+                // Specialized - STEM
+                {'code': 'PRECALC', 'name': 'Pre-Calculus', 'type': 'Specialized'},
+                {'code': 'CALC', 'name': 'Basic Calculus', 'type': 'Specialized'},
+                {'code': 'BIO1', 'name': 'General Biology 1', 'type': 'Specialized'},
+                {'code': 'BIO2', 'name': 'General Biology 2', 'type': 'Specialized'},
+                {'code': 'CHEM1', 'name': 'General Chemistry 1', 'type': 'Specialized'},
+                {'code': 'CHEM2', 'name': 'General Chemistry 2', 'type': 'Specialized'},
+                {'code': 'PHY1', 'name': 'General Physics 1', 'type': 'Specialized'},
+                {'code': 'PHY2', 'name': 'General Physics 2', 'type': 'Specialized'},
+                // Specialized - ABM
+                {'code': 'AE', 'name': 'Applied Economics', 'type': 'Specialized'},
+                {'code': 'BM', 'name': 'Business Math', 'type': 'Specialized'},
+                {'code': 'OM', 'name': 'Organization and Management', 'type': 'Specialized'},
+                {'code': 'BF', 'name': 'Business Finance', 'type': 'Specialized'},
+                {'code': 'PM', 'name': 'Principles of Marketing', 'type': 'Specialized'},
+                {'code': 'FABM1', 'name': 'Fundamentals of ABM 1', 'type': 'Specialized'},
+                {'code': 'FABM2', 'name': 'Fundamentals of ABM 2', 'type': 'Specialized'},
+                // Specialized - HUMSS
+                {'code': 'PHIL', 'name': 'Philosophy', 'type': 'Specialized'},
+                {'code': 'PPG', 'name': 'Philippine Politics & Governance', 'type': 'Specialized'},
+                {'code': 'CW', 'name': 'Creative Writing', 'type': 'Specialized'},
+                {'code': 'TNT', 'name': 'Trends, Networks and Critical Thinking', 'type': 'Specialized'},
+                {'code': 'DIASS', 'name': 'Disciplines in Applied Social Sciences', 'type': 'Specialized'},
+                {'code': 'WR', 'name': 'World Religion', 'type': 'Specialized'},
+                {'code': 'CE', 'name': 'Community Engagement', 'type': 'Specialized'},
               ];
         _isLoading = false;
       });
@@ -75,26 +89,52 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
       // Use fallback data on error
       setState(() {
         _subjects = [
+          // Core Subjects
           {'code': 'OC', 'name': 'Oral Communication', 'type': 'Core'},
+          {'code': 'RW', 'name': 'Reading and Writing', 'type': 'Core'},
           {'code': 'GM', 'name': 'General Mathematics', 'type': 'Core'},
+          {'code': 'SP', 'name': 'Statistics and Probability', 'type': 'Core'},
           {'code': 'EAP', 'name': 'English for Academic', 'type': 'Core'},
           {'code': 'FIL', 'name': 'Filipino', 'type': 'Core'},
           {'code': '21LIT', 'name': '21st Century Literature', 'type': 'Core'},
           {'code': 'CA', 'name': 'Contemporary Arts', 'type': 'Core'},
-          {
-            'code': 'MIL',
-            'name': 'Media and Information Literacy',
-            'type': 'Core',
-          },
-          {'code': 'PE', 'name': 'Physical Education', 'type': 'Core'},
-          {'code': 'ES', 'name': 'Earth Science', 'type': 'Core'},
-          {'code': 'CHEM', 'name': 'General Chemistry', 'type': 'Core'},
-          {'code': 'CALC', 'name': 'Basic Calculus', 'type': 'Core'},
-          {'code': 'PHY', 'name': 'Physics', 'type': 'Core'},
-          {'code': 'ABM1', 'name': 'Applied Economics', 'type': 'Applied'},
-          {'code': 'ABM2', 'name': 'Business Math', 'type': 'Applied'},
-          {'code': 'STEM1', 'name': 'Pre-Calculus', 'type': 'Specialized'},
-          {'code': 'HUMSS1', 'name': 'Philosophy', 'type': 'Specialized'},
+          {'code': 'MIL', 'name': 'Media and Information Literacy', 'type': 'Core'},
+          {'code': 'PE1', 'name': 'Physical Education 1', 'type': 'Core'},
+          {'code': 'PE2', 'name': 'Physical Education 2', 'type': 'Core'},
+          {'code': 'HEALTH', 'name': 'Health', 'type': 'Core'},
+          {'code': 'PD', 'name': 'Personal Development', 'type': 'Core'},
+          {'code': 'UCSP', 'name': 'Understanding Culture, Society and Politics', 'type': 'Core'},
+          {'code': 'ELS', 'name': 'Earth and Life Science', 'type': 'Core'},
+          {'code': 'PS', 'name': 'Physical Science', 'type': 'Core'},
+          {'code': 'IP', 'name': 'Introduction to Philosophy', 'type': 'Core'},
+          // Applied
+          {'code': 'ENTREP', 'name': 'Entrepreneurship', 'type': 'Applied'},
+          {'code': 'TECH', 'name': 'Practical Research', 'type': 'Applied'},
+          // Specialized - STEM
+          {'code': 'PRECALC', 'name': 'Pre-Calculus', 'type': 'Specialized'},
+          {'code': 'CALC', 'name': 'Basic Calculus', 'type': 'Specialized'},
+          {'code': 'BIO1', 'name': 'General Biology 1', 'type': 'Specialized'},
+          {'code': 'BIO2', 'name': 'General Biology 2', 'type': 'Specialized'},
+          {'code': 'CHEM1', 'name': 'General Chemistry 1', 'type': 'Specialized'},
+          {'code': 'CHEM2', 'name': 'General Chemistry 2', 'type': 'Specialized'},
+          {'code': 'PHY1', 'name': 'General Physics 1', 'type': 'Specialized'},
+          {'code': 'PHY2', 'name': 'General Physics 2', 'type': 'Specialized'},
+          // Specialized - ABM
+          {'code': 'AE', 'name': 'Applied Economics', 'type': 'Specialized'},
+          {'code': 'BM', 'name': 'Business Math', 'type': 'Specialized'},
+          {'code': 'OM', 'name': 'Organization and Management', 'type': 'Specialized'},
+          {'code': 'BF', 'name': 'Business Finance', 'type': 'Specialized'},
+          {'code': 'PM', 'name': 'Principles of Marketing', 'type': 'Specialized'},
+          {'code': 'FABM1', 'name': 'Fundamentals of ABM 1', 'type': 'Specialized'},
+          {'code': 'FABM2', 'name': 'Fundamentals of ABM 2', 'type': 'Specialized'},
+          // Specialized - HUMSS
+          {'code': 'PHIL', 'name': 'Philosophy', 'type': 'Specialized'},
+          {'code': 'PPG', 'name': 'Philippine Politics & Governance', 'type': 'Specialized'},
+          {'code': 'CW', 'name': 'Creative Writing', 'type': 'Specialized'},
+          {'code': 'TNT', 'name': 'Trends, Networks and Critical Thinking', 'type': 'Specialized'},
+          {'code': 'DIASS', 'name': 'Disciplines in Applied Social Sciences', 'type': 'Specialized'},
+          {'code': 'WR', 'name': 'World Religion', 'type': 'Specialized'},
+          {'code': 'CE', 'name': 'Community Engagement', 'type': 'Specialized'},
         ];
         _isLoading = false;
       });
@@ -225,12 +265,12 @@ class _LessonSelectionScreenState extends State<LessonSelectionScreen> {
 
                         return GestureDetector(
                           onTap: () {
-                            // Navigate to StudyGroupsScreen with the selected subject
+                            // Navigate to BuddiesBySubjectScreen showing all buddies for this subject
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) =>
-                                    StudyGroupsScreen(initialSubject: name),
+                                    BuddiesBySubjectScreen(subject: name),
                               ),
                             );
                           },

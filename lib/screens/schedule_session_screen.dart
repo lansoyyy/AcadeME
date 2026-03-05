@@ -197,8 +197,88 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     );
   }
 
-  Future<void> _createSession(String buddyUid, DateTime scheduledAt) async {
-    setState(() => _isLoading = true);
+  /// Shows a rating dialog after a session is completed, then marks it complete.
+  Future<void> _completeSessionWithRating(StudySession session) async {
+    int selectedRating = 0;
+    final feedbackCtrl = TextEditingController();
+    final buddyUid = session.hostUid == _currentUid ? session.guestUid : session.hostUid;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setst) => AlertDialog(
+          title: const Text('Rate Your Session'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How was your study session?', style: TextStyle(fontSize: 16)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  return IconButton(
+                    onPressed: () => setst(() => selectedRating = i + 1),
+                    icon: Icon(
+                      i < selectedRating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 36,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: feedbackCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Leave optional feedback...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Skip'),
+            ),
+            FilledButton(
+              onPressed: selectedRating == 0 ? null : () => Navigator.pop(ctx, true),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Mark session as completed
+    await _sessionService.completeSession(session.id);
+
+    // Save rating if user confirmed and gave a rating
+    if (confirmed == true && selectedRating > 0) {
+      try {
+        await _sessionService.rateSession(
+          sessionId: session.id,
+          ratedUid: buddyUid,
+          rating: selectedRating,
+          feedback: feedbackCtrl.text.trim(),
+        );
+      } catch (e) {
+        debugPrint('Error saving rating: $e');
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Session marked as completed!')),
+      );
+    }
+  }
+
+  Future<void> _createSession(String buddyUid, DateTime scheduledAt) async {    setState(() => _isLoading = true);
 
     try {
       final subject = _selectedSubject.isNotEmpty
@@ -291,12 +371,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
                 title: const Text('Mark as Completed'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _sessionService.completeSession(session.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Session marked as completed!'),
-                    ),
-                  );
+                  _completeSessionWithRating(session);
                 },
               ),
             // Host can delete cancelled/completed sessions
@@ -822,7 +897,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
                     if (session.isConfirmed)
                       TextButton.icon(
                         onPressed: () {
-                          _sessionService.completeSession(session.id);
+                          _completeSessionWithRating(session);
                         },
                         icon: const Icon(
                           Icons.task_alt,

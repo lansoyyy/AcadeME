@@ -240,6 +240,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
     if (confirmed == true) {
       await _userService.updateUserStatus(widget.uid, activate);
+      await _userService.sendNotificationToUser(
+        uid: widget.uid,
+        title: activate ? 'Account Activated' : 'Account Deactivated',
+        body: activate
+            ? 'Your account has been activated by an administrator. You can now access all features.'
+            : 'Your account has been deactivated by an administrator. Please contact support if you believe this is a mistake.',
+        type: 'admin_action',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(activate ? 'Account activated' : 'Account deactivated')),
@@ -281,6 +289,12 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     if (days != null) {
       final until = DateTime.now().add(Duration(days: days));
       await _userService.suspendUser(widget.uid, until);
+      await _userService.sendNotificationToUser(
+        uid: widget.uid,
+        title: 'Account Suspended',
+        body: 'Your account has been suspended for $days day(s) by an administrator. Access will be restored on ${until.month}/${until.day}/${until.year}.',
+        type: 'admin_action',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Account suspended for $days days')),
@@ -315,6 +329,12 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
     if (reason != null && reason.isNotEmpty) {
       await _userService.addWarning(widget.uid, reason);
+      await _userService.sendNotificationToUser(
+        uid: widget.uid,
+        title: 'Warning Issued',
+        body: 'An administrator has issued a warning on your account. Reason: $reason. Please review the community guidelines.',
+        type: 'admin_action',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Warning issued')),
@@ -346,6 +366,12 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
     if (confirmed == true) {
       await _userService.sendPasswordReset(email);
+      await _userService.sendNotificationToUser(
+        uid: widget.uid,
+        title: 'Password Reset Requested',
+        body: 'An administrator has initiated a password reset for your account. Check your email ($email) for the reset link.',
+        type: 'admin_action',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password reset email sent')),

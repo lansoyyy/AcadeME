@@ -24,7 +24,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   int _weeklyActiveUsers = 0;
   int _matchesThisWeek = 0;
   double _acceptanceRate = 0.0;
-  int _totalForumPosts = 0;
   int _totalReports = 0;
   bool _isLoadingAsync = true;
 
@@ -42,7 +41,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         _analyticsService.getWeeklyActiveUsers(),
         _analyticsService.getMatchesThisWeek(),
         _analyticsService.getAcceptanceRate(),
-        _analyticsService.getTotalForumPosts(),
         _analyticsService.getTotalReports(),
       ]);
       if (mounted) {
@@ -51,8 +49,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           _weeklyActiveUsers = results[1] as int;
           _matchesThisWeek = results[2] as int;
           _acceptanceRate = results[3] as double;
-          _totalForumPosts = results[4] as int;
-          _totalReports = results[5] as int;
+          _totalReports = results[4] as int;
           _isLoadingAsync = false;
         });
       }
@@ -238,14 +235,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               color: Colors.indigo,
               subtitle: 'Scheduled sessions',
               onTap: () => _navigateToDrilldown('sessions'),
-            ),
-            _StatCard(
-              title: 'Forum Posts',
-              value: _isLoadingAsync ? '...' : _totalForumPosts.toString(),
-              icon: Icons.forum,
-              color: Colors.cyan,
-              subtitle: 'Total discussions',
-              onTap: () => _navigateToDrilldown('forum'),
             ),
             _StatCard(
               title: 'Reports',
@@ -738,7 +727,6 @@ class _GrowthLineChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxValue = data.map((d) => d.value).reduce((a, b) => a > b ? a : b);
     final minValue = data.map((d) => d.value).reduce((a, b) => a < b ? a : b);
-    final range = maxValue - minValue;
 
     return CustomPaint(
       size: const Size(double.infinity, 200),

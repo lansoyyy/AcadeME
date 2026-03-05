@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/fcm_service.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/custom_button.dart';
@@ -68,6 +69,7 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
     setState(() => _isLoading = true);
 
     try {
+      // Persist preferences to Firestore
       await _firestore
           .collection('users')
           .doc(_currentUid)
@@ -81,6 +83,15 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
         'marketingNotifications': _marketingNotifications,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      // Update FCM topic subscriptions so the server can target this device
+      await FCMService().updateTopicSubscriptions(
+        newMatches: _newMatches,
+        newMessages: _newMessages,
+        sessionReminders: _sessionReminders,
+        studyTips: _studyTips,
+        marketing: _marketingNotifications,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

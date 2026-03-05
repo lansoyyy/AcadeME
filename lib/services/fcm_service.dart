@@ -191,6 +191,37 @@ class FCMService {
     debugPrint('FCM: In-app notification - ${message.notification?.title}');
   }
 
+  /// Update FCM topic subscriptions to match the user's notification preferences.
+  /// This lets the server send to topics and reach only users who opted in.
+  Future<void> updateTopicSubscriptions({
+    required bool newMatches,
+    required bool newMessages,
+    required bool sessionReminders,
+    required bool studyTips,
+    required bool marketing,
+  }) async {
+    final actions = {
+      'new_matches': newMatches,
+      'new_messages': newMessages,
+      'session_reminders': sessionReminders,
+      'study_tips': studyTips,
+      'marketing': marketing,
+    };
+
+    for (final entry in actions.entries) {
+      try {
+        if (entry.value) {
+          await _messaging.subscribeToTopic(entry.key);
+        } else {
+          await _messaging.unsubscribeFromTopic(entry.key);
+        }
+      } catch (e) {
+        debugPrint('FCM: Error updating topic ${entry.key}: $e');
+      }
+    }
+    debugPrint('FCM: Topic subscriptions updated');
+  }
+
   /// Subscribe to a topic
   Future<void> subscribeToTopic(String topic) async {
     await _messaging.subscribeToTopic(topic);

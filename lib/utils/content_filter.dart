@@ -205,11 +205,13 @@ class ContentFilter {
   ];
 
   /// Trie node for efficient word matching
-  static late final TrieNode _rootTrie;
+  static TrieNode? _rootTrieRef;
+  static bool _trieInitialized = false;
 
   /// Initialize the trie
   static void _initializeTrie() {
-    _rootTrie = TrieNode();
+    _rootTrieRef = TrieNode();
+    _trieInitialized = true;
     for (final word in _allBadWords) {
       _insertWord(word.toLowerCase());
     }
@@ -217,7 +219,7 @@ class ContentFilter {
 
   /// Insert a word into the trie
   static void _insertWord(String word) {
-    TrieNode node = _rootTrie;
+    TrieNode node = _rootTrieRef!;
     for (int i = 0; i < word.length; i++) {
       final char = word[i];
       if (!node.children.containsKey(char)) {
@@ -230,7 +232,7 @@ class ContentFilter {
 
   /// Check if a word is in the trie
   static bool _isBadWord(String word) {
-    TrieNode node = _rootTrie;
+    TrieNode node = _rootTrieRef!;
     for (int i = 0; i < word.length; i++) {
       final char = word[i];
       if (!node.children.containsKey(char)) {
@@ -244,7 +246,7 @@ class ContentFilter {
   /// Filter text by replacing bad words with asterisks
   /// Returns the filtered text
   static String filterText(String text) {
-    if (_allBadWords.isEmpty) {
+    if (!_trieInitialized) {
       _initializeTrie();
     }
 
@@ -274,7 +276,7 @@ class ContentFilter {
   /// Check if text contains bad words
   /// Returns true if any bad word is found
   static bool containsBadWords(String text) {
-    if (_allBadWords.isEmpty) {
+    if (!_trieInitialized) {
       _initializeTrie();
     }
 
@@ -293,7 +295,7 @@ class ContentFilter {
   /// Get the list of bad words found in text
   /// Returns a list of bad words found
   static List<String> getBadWordsInText(String text) {
-    if (_allBadWords.isEmpty) {
+    if (!_trieInitialized) {
       _initializeTrie();
     }
 

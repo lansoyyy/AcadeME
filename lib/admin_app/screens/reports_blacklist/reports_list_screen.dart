@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../services/admin_user_service.dart';
 
 /// Reports List Screen
 /// View and manage user reports
@@ -33,15 +34,29 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('reports')
-                .where('status', isEqualTo: _filter)
-                .orderBy('createdAt', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final reports = snapshot.data!.docs;
+              // Sort client-side and filter by status (handle missing status as 'open')
+              var reports = snapshot.data!.docs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final status = (data['status'] as String?) ?? 'open';
+                return status == _filter;
+              }).toList();
+
+              reports.sort((a, b) {
+                final aData = a.data() as Map<String, dynamic>;
+                final bData = b.data() as Map<String, dynamic>;
+                final aTime = aData['createdAt'] as Timestamp?;
+                final bTime = bData['createdAt'] as Timestamp?;
+                if (aTime == null && bTime == null) return 0;
+                if (aTime == null) return 1;
+                if (bTime == null) return -1;
+                return bTime.compareTo(aTime);
+              });
 
               if (reports.isEmpty) {
                 return Center(
@@ -78,7 +93,7 @@ class _ReportCard extends StatelessWidget {
     final reporterUid = data['reporterUid'] ?? 'Unknown';
     final reportedUid = data['reportedUid'] ?? 'Unknown';
     final reason = data['reason'] ?? 'No reason provided';
-    final status = data['status'] ?? 'open';
+    final status = (data['status'] as String?) ?? 'open';
     final createdAt = data['createdAt'] as Timestamp?;
 
     return Card(
@@ -184,6 +199,9 @@ class _ReportCard extends StatelessWidget {
   }
 
   Future<void> _showActionDialog(BuildContext context) async {
+    final data = report.data() as Map<String, dynamic>;
+    final reportedUid = data['reportedUid'] as String?;
+
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -215,6 +233,50 @@ class _ReportCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (action != null && reportedUid != null && reportedUid.isNotEmpty) {
+      final adminService = AdminUserService();
+      try {
+        switch (action) {
+          case 'warning':
+            await adminService.addWarning(reportedUid, 'Reported by another user');
+            await adminService.sendNotificationToUser(
+              uid: reportedUid,
+              title: 'Warning Issued',
+              body: 'Your account has received a warning due to a user report. Please review our community guidelines.',
+              type: 'admin_action',
+            );
+            break;
+          case 'suspend':
+            final until = DateTime.now().add(const Duration(days: 7));
+            await adminService.suspendUser(reportedUid, until);
+            await adminService.sendNotificationToUser(
+              uid: reportedUid,
+              title: 'Account Suspended',
+              body: 'Your account has been suspended for 7 days due to a user report.',
+              type: 'admin_action',
+            );
+            break;
+          case 'deactivate':
+            await adminService.updateUserStatus(reportedUid, false);
+            await adminService.sendNotificationToUser(
+              uid: reportedUid,
+              title: 'Account Deactivated',
+              body: 'Your account has been deactivated due to a user report. Please contact support.',
+              type: 'admin_action',
+            );
+            break;
+          default:
+            break;
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error applying action: $e')),
+          );
+        }
+      }
+    }
 
     if (action != null) {
       await FirebaseFirestore.instance.collection('reports').doc(report.id).update({

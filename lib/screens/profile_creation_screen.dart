@@ -37,6 +37,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
   String _selectedTrack = '';
   int _selectedGradeLevel = 11;
   final List<String> _selectedSubjects = [];
+  String _selectedSubjectFilter = 'All';
 
   final AcademicDataService _academicService = AcademicDataService();
 
@@ -96,101 +97,424 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
   List<Map<String, dynamic>> _getComprehensiveSubjects() {
     return [
       // Core Subjects
-      {'name': 'Oral Communication', 'code': 'OC'},
-      {'name': 'Reading and Writing Skills', 'code': 'RWS'},
-      {'name': '21st Century Literature', 'code': '21LIT'},
-      {'name': 'Media and Information Literacy', 'code': 'MIL'},
-      {'name': 'Physical Education and Health', 'code': 'PEH'},
-      {'name': 'Personal Development', 'code': 'PDEV'},
-      {'name': 'Understanding Culture, Society and Politics', 'code': 'UCSP'},
+      {
+        'name': 'Oral Communication',
+        'code': 'OC',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Reading and Writing Skills',
+        'code': 'RWS',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': '21st Century Literature',
+        'code': '21LIT',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Media and Information Literacy',
+        'code': 'MIL',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Physical Education and Health',
+        'code': 'PEH',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Personal Development',
+        'code': 'PDEV',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Understanding Culture, Society and Politics',
+        'code': 'UCSP',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'General Mathematics',
+        'code': 'GM',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Statistics and Probability',
+        'code': 'STAT',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Earth and Life Science',
+        'code': 'ELS',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Earth Science',
+        'code': 'ES',
+        'type': 'Core',
+        'strands': ['STEM', 'HUMSS'],
+      },
+      {
+        'name': 'Physical Science',
+        'code': 'PS',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Introduction to Philosophy',
+        'code': 'PHILO',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Physical Education 1',
+        'code': 'PE1',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Physical Education 2',
+        'code': 'PE2',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Physical Education 3',
+        'code': 'PE3',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Physical Education 4',
+        'code': 'PE4',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Health 1',
+        'code': 'H1',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Health 2',
+        'code': 'H2',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Health 3',
+        'code': 'H3',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Health 4',
+        'code': 'H4',
+        'type': 'Core',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
 
       // Applied Subjects
       {
         'name': 'English for Academic and Professional Purposes',
         'code': 'EAPP',
+        'type': 'Applied',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
       },
-      {'name': 'Practical Research 1', 'code': 'PR1'},
-      {'name': 'Practical Research 2', 'code': 'PR2'},
-      {'name': 'Filipino sa Piling Larang', 'code': 'FPL'},
-      {'name': 'Inquiries, Investigations and Immersion', 'code': 'III'},
+      {
+        'name': 'Practical Research 1',
+        'code': 'PR1',
+        'type': 'Applied',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Practical Research 2',
+        'code': 'PR2',
+        'type': 'Applied',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Filipino sa Piling Larang',
+        'code': 'FPL',
+        'type': 'Applied',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
+      {
+        'name': 'Inquiries, Investigations and Immersion',
+        'code': 'III',
+        'type': 'Applied',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
 
       // Specialized Subjects - STEM
-      {'name': 'Pre-Calculus', 'code': 'PCAL'},
-      {'name': 'Basic Calculus', 'code': 'CALC'},
-      {'name': 'General Biology 1', 'code': 'GBIO1'},
-      {'name': 'General Biology 2', 'code': 'GBIO2'},
-      {'name': 'General Physics 1', 'code': 'GPHY1'},
-      {'name': 'General Physics 2', 'code': 'GPHY2'},
-      {'name': 'General Chemistry 1', 'code': 'GCHEM1'},
-      {'name': 'General Chemistry 2', 'code': 'GCHEM2'},
-      {'name': 'Work Immersion', 'code': 'WI'},
+      {
+        'name': 'Pre-Calculus',
+        'code': 'PCAL',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'Basic Calculus',
+        'code': 'CALC',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'General Biology 1',
+        'code': 'GBIO1',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'General Biology 2',
+        'code': 'GBIO2',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'General Physics 1',
+        'code': 'GPHY1',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'General Physics 2',
+        'code': 'GPHY2',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'General Chemistry 1',
+        'code': 'GCHEM1',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'General Chemistry 2',
+        'code': 'GCHEM2',
+        'type': 'Specialized',
+        'strands': ['STEM'],
+      },
+      {
+        'name': 'Work Immersion',
+        'code': 'WI',
+        'type': 'Specialized',
+        'strands': ['STEM', 'ABM', 'HUMSS', 'STEM-H', 'GAS'],
+      },
 
       // Specialized Subjects - ABM
-      {'name': 'Accountancy, Business and Management 1', 'code': 'ABM1'},
-      {'name': 'Accountancy, Business and Management 2', 'code': 'ABM2'},
+      {
+        'name': 'Accountancy, Business and Management 1',
+        'code': 'ABM1',
+        'type': 'Specialized',
+        'strands': ['ABM'],
+      },
+      {
+        'name': 'Accountancy, Business and Management 2',
+        'code': 'ABM2',
+        'type': 'Specialized',
+        'strands': ['ABM'],
+      },
       {
         'name': 'Fundamentals of Accountancy, Business and Management 1',
         'code': 'FABM1',
+        'type': 'Specialized',
+        'strands': ['ABM'],
       },
       {
         'name': 'Fundamentals of Accountancy, Business and Management 2',
         'code': 'FABM2',
+        'type': 'Specialized',
+        'strands': ['ABM'],
       },
-      {'name': 'Business Math', 'code': 'BMATH'},
-      {'name': 'Business Finance', 'code': 'BFIN'},
-      {'name': 'Organization and Management', 'code': 'ORM'},
-      {'name': 'Principles of Marketing', 'code': 'POM'},
+      {
+        'name': 'Business Math',
+        'code': 'BMATH',
+        'type': 'Specialized',
+        'strands': ['ABM'],
+      },
+      {
+        'name': 'Business Finance',
+        'code': 'BFIN',
+        'type': 'Specialized',
+        'strands': ['ABM'],
+      },
+      {
+        'name': 'Organization and Management',
+        'code': 'ORM',
+        'type': 'Specialized',
+        'strands': ['ABM'],
+      },
+      {
+        'name': 'Principles of Marketing',
+        'code': 'POM',
+        'type': 'Specialized',
+        'strands': ['ABM'],
+      },
 
       // Specialized Subjects - HUMSS
       {
         'name': 'Introduction to World Religions and Belief Systems',
         'code': 'WRBS',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
       },
-      {'name': 'Creative Writing', 'code': 'CW'},
-      {'name': 'Creative Nonfiction', 'code': 'CNF'},
-      {'name': 'Trends, Networks and Critical Thinking', 'code': 'TNCT'},
-      {'name': 'Philippine Politics and Governance', 'code': 'PPG'},
+      {
+        'name': 'Creative Writing',
+        'code': 'CW',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
+      },
+      {
+        'name': 'Creative Nonfiction',
+        'code': 'CNF',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
+      },
+      {
+        'name': 'Trends, Networks and Critical Thinking',
+        'code': 'TNCT',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
+      },
+      {
+        'name': 'Philippine Politics and Governance',
+        'code': 'PPG',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
+      },
       {
         'name': 'Community Engagement, Solidarity and Citizenship',
         'code': 'CESC',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
       },
-      {'name': 'Disciplines and Ideas in the Social Sciences', 'code': 'DISS'},
+      {
+        'name': 'Disciplines and Ideas in the Social Sciences',
+        'code': 'DISS',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
+      },
       {
         'name': 'Disciplines and Ideas in the Applied Social Sciences',
         'code': 'DIASS',
+        'type': 'Specialized',
+        'strands': ['HUMSS'],
       },
 
       // Specialized Subjects - STEM-H (Health)
-      {'name': 'Anatomy and Physiology', 'code': 'ANAPHY'},
-      {'name': 'Microbiology and Parasitology', 'code': 'MIPAR'},
-      {'name': 'Medical Terminology', 'code': 'MEDTERM'},
-      {'name': 'Health Education', 'code': 'HEALTED'},
-      {'name': 'Drug Education', 'code': 'DRUGED'},
-      {'name': 'First Aid and Safety', 'code': 'FAS'},
-      {'name': 'Nutrition', 'code': 'NUTRI'},
+      {
+        'name': 'Anatomy and Physiology',
+        'code': 'ANAPHY',
+        'type': 'Specialized',
+        'strands': ['STEM-H'],
+      },
+      {
+        'name': 'Microbiology and Parasitology',
+        'code': 'MIPAR',
+        'type': 'Specialized',
+        'strands': ['STEM-H'],
+      },
+      {
+        'name': 'Medical Terminology',
+        'code': 'MEDTERM',
+        'type': 'Specialized',
+        'strands': ['STEM-H'],
+      },
+      {
+        'name': 'Health Education',
+        'code': 'HEALTED',
+        'type': 'Specialized',
+        'strands': ['STEM-H'],
+      },
+      {
+        'name': 'Drug Education',
+        'code': 'DRUGED',
+        'type': 'Specialized',
+        'strands': ['STEM-H'],
+      },
+      {
+        'name': 'First Aid and Safety',
+        'code': 'FAS',
+        'type': 'Specialized',
+        'strands': ['STEM-H'],
+      },
+      {
+        'name': 'Nutrition',
+        'code': 'NUTRI',
+        'type': 'Specialized',
+        'strands': ['STEM-H'],
+      },
 
       // Specialized Subjects - GAS
-      {'name': 'Disaster Readiness and Risk Reduction', 'code': 'DRRR'},
-      {'name': 'Elective 1', 'code': 'ELEC1'},
-      {'name': 'Elective 2', 'code': 'ELEC2'},
-      {'name': 'Elective 3', 'code': 'ELEC3'},
-
-      // Other Core Subjects
-      {'name': 'General Mathematics', 'code': 'GM'},
-      {'name': 'Statistics and Probability', 'code': 'STAT'},
-      {'name': 'Earth and Life Science', 'code': 'ELS'},
-      {'name': 'Earth Science', 'code': 'ES'},
-      {'name': 'Physical Science', 'code': 'PS'},
-      {'name': 'Introduction to Philosophy', 'code': 'PHILO'},
-      {'name': 'Physical Education 1', 'code': 'PE1'},
-      {'name': 'Physical Education 2', 'code': 'PE2'},
-      {'name': 'Physical Education 3', 'code': 'PE3'},
-      {'name': 'Physical Education 4', 'code': 'PE4'},
-      {'name': 'Health 1', 'code': 'H1'},
-      {'name': 'Health 2', 'code': 'H2'},
-      {'name': 'Health 3', 'code': 'H3'},
-      {'name': 'Health 4', 'code': 'H4'},
+      {
+        'name': 'Disaster Readiness and Risk Reduction',
+        'code': 'DRRR',
+        'type': 'Specialized',
+        'strands': ['GAS'],
+      },
+      {
+        'name': 'Elective 1',
+        'code': 'ELEC1',
+        'type': 'Specialized',
+        'strands': ['GAS'],
+      },
+      {
+        'name': 'Elective 2',
+        'code': 'ELEC2',
+        'type': 'Specialized',
+        'strands': ['GAS'],
+      },
+      {
+        'name': 'Elective 3',
+        'code': 'ELEC3',
+        'type': 'Specialized',
+        'strands': ['GAS'],
+      },
     ];
+  }
+
+  List<Map<String, dynamic>> _getFilteredSubjects() {
+    if (_selectedSubjectFilter == 'All') {
+      return _subjects;
+    }
+
+    // Filter by type (Core, Applied, Specialized)
+    if (_selectedSubjectFilter == 'Core' ||
+        _selectedSubjectFilter == 'Applied' ||
+        _selectedSubjectFilter == 'Specialized') {
+      return _subjects.where((subject) {
+        final type = subject['type'] as String? ?? '';
+        return type == _selectedSubjectFilter;
+      }).toList();
+    }
+
+    // Filter by strand (STEM, ABM, HUMSS, STEM-H, GAS)
+    return _subjects.where((subject) {
+      final strands = subject['strands'] as List<dynamic>? ?? [];
+      return strands.contains(_selectedSubjectFilter);
+    }).toList();
+  }
+
+  List<String> _getSubjectFilterOptions() {
+    final options = ['All', 'Core', 'Applied', 'Specialized'];
+
+    // Add strand-specific filters if a track is selected
+    if (_selectedTrack.isNotEmpty) {
+      options.add(_selectedTrack);
+    }
+
+    return options;
   }
 
   @override
@@ -776,28 +1100,71 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                 _buildLabel('Subjects Interested In'),
                 _isLoadingAcademicData
                     ? const Center(child: CircularProgressIndicator())
-                    : Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _subjects.take(20).map<Widget>((subject) {
-                          final name = subject['name'] ?? '';
-                          final isSelected = _selectedSubjects.contains(name);
-                          return FilterChip(
-                            label: Text(name),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                if (selected) {
-                                  _selectedSubjects.add(name);
-                                } else {
-                                  _selectedSubjects.remove(name);
-                                }
-                              });
-                            },
-                            selectedColor: AppColors.primary.withOpacity(0.2),
-                            checkmarkColor: AppColors.primary,
-                          );
-                        }).toList(),
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Filter Dropdown
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.radiusM,
+                              ),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedSubjectFilter,
+                                isExpanded: true,
+                                hint: const Text('Filter by type or strand'),
+                                items: _getSubjectFilterOptions().map((filter) {
+                                  return DropdownMenuItem<String>(
+                                    value: filter,
+                                    child: Text(filter),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(
+                                    () =>
+                                        _selectedSubjectFilter = value ?? 'All',
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppConstants.paddingM),
+                          // Subjects Chips
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _getFilteredSubjects().map<Widget>((
+                              subject,
+                            ) {
+                              final name = subject['name'] ?? '';
+                              final isSelected = _selectedSubjects.contains(
+                                name,
+                              );
+                              return FilterChip(
+                                label: Text(name),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      _selectedSubjects.add(name);
+                                    } else {
+                                      _selectedSubjects.remove(name);
+                                    }
+                                  });
+                                },
+                                selectedColor: AppColors.primary.withOpacity(
+                                  0.2,
+                                ),
+                                checkmarkColor: AppColors.primary,
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       ),
                 const SizedBox(height: AppConstants.paddingXL),
 

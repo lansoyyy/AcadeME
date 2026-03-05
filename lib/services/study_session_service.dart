@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
+import 'notification_service.dart';
+import 'user_profile_service.dart';
 
 /// Service for managing study sessions
 class StudySessionService {
@@ -38,6 +40,21 @@ class StudySessionService {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    // Notify the guest that they have been invited to a session
+    try {
+      final hostProfile = await UserProfileService().getProfile(currentUser.uid);
+      final hostName = hostProfile?.fullName ?? 'Someone';
+      await NotificationService().notifyStudySession(
+        uid: guestUid,
+        sessionType: 'invited',
+        otherUserName: hostName,
+        subject: subject,
+        sessionId: docRef.id,
+      );
+    } catch (e) {
+      debugPrint('StudySessionService: Error sending invite notification: $e');
+    }
 
     return docRef.id;
   }
@@ -139,6 +156,43 @@ class StudySessionService {
   /// Delete a session
   Future<void> deleteSession(String sessionId) async {
     await _sessionsRef.doc(sessionId).delete();
+  }
+
+  /// Rate a completed session and save rating for the other user
+  Future<void> rateSession({
+    required String sessionId,
+    required String ratedUid,
+    required int rating,
+    String feedback = '',
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) throw Exception('User not authenticated');
+
+    final sessionDoc = await _sessionsRef.doc(sessionId).get();
+    if (!sessionDoc.exists) throw Exception('Session not found');
+
+    final data = sessionDoc.data()!;
+    final isHost = data['hostUid'] == currentUser.uid;
+    final ratingField = isHost ? 'ratingByHost' : 'ratingByGuest';
+    final feedbackField = isHost ? 'feedbackByHost' : 'feedbackByGuest';
+
+    // Store rating on the session document
+    await _sessionsRef.doc(sessionId).update({
+      ratingField: rating,
+      feedbackField: feedback,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    // Store in global ratings collection for the rated user
+    await _firestore.collection('ratings').add({
+      'ratedUid': ratedUid,
+      'raterUid': currentUser.uid,
+      'sessionId': sessionId,
+      'rating': rating,
+      'feedback': feedback,
+      'subject': data['subject'] ?? '',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   /// Get all sessions for current user (as Future)

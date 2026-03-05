@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../widgets/custom_button.dart';
@@ -14,6 +15,13 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+
+  static const String _onboardingCompletedKey = 'onboarding_completed';
+
+  Future<void> _markOnboardingAsCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingCompletedKey, true);
+  }
 
   final List<Map<String, String>> _onboardingData = [
     {
@@ -42,22 +50,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     },
   ];
 
-  void _onNext() {
+  Future<void> _onNext() async {
     if (_currentPage < _onboardingData.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     } else {
-      _onGetStarted();
+      await _onGetStarted();
     }
   }
 
-  void _onSkip() {
-    _onGetStarted();
+  Future<void> _onSkip() async {
+    await _onGetStarted();
   }
 
-  void _onGetStarted() {
+  Future<void> _onGetStarted() async {
+    await _markOnboardingAsCompleted();
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const ProfileCreationScreen()),
     );

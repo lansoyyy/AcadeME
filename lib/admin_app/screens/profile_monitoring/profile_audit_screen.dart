@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../user_management/user_detail_screen.dart';
+import '../../services/admin_user_service.dart';
 
 /// Profile Audit Screen
 /// Monitor student profiles for completeness and inappropriate content
@@ -79,7 +81,9 @@ class _ProfileAuditScreenState extends State<ProfileAuditScreen> {
     final name = (data['fullName'] ?? '').toString().toLowerCase();
     final bio = (data['bio'] ?? '').toString().toLowerCase();
     final flaggedWords = ['inappropriate', 'spam', 'fake', 'test', 'admin'];
-    return flaggedWords.any((word) => name.contains(word) || bio.contains(word));
+    final hasWordFlag = flaggedWords.any((word) => name.contains(word) || bio.contains(word));
+    final isExplicitlyFlagged = data['isFlagged'] == true;
+    return hasWordFlag || isExplicitlyFlagged;
   }
 }
 
@@ -100,6 +104,7 @@ class _ProfileAuditTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = data['fullName'] ?? 'Unknown';
     final photoUrl = data['photoUrl'] ?? '';
+    final isExplicitlyFlagged = data['isFlagged'] == true;
 
     return ListTile(
       leading: CircleAvatar(
@@ -118,7 +123,85 @@ class _ProfileAuditTile extends StatelessWidget {
         ],
       ),
       isThreeLine: isIncomplete || isFlagged,
-      trailing: const Icon(Icons.chevron_right),
+      trailing: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        onSelected: (value) async {
+          if (value == 'view') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => UserDetailScreen(uid: uid)),
+            );
+          } else if (value == 'flag') {
+            await _showFlagDialog(context);
+          } else if (value == 'unflag') {
+            await AdminUserService().unflagProfile(uid);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Profile unflagged')),
+              );
+            }
+          }
+        },
+        itemBuilder: (_) => [
+          const PopupMenuItem(value: 'view', child: ListTile(leading: Icon(Icons.person), title: Text('View Full Profile'))),
+          const PopupMenuItem(value: 'flag', child: ListTile(leading: Icon(Icons.flag, color: Colors.red), title: Text('Flag Profile'))),
+          if (isExplicitlyFlagged)
+            const PopupMenuItem(value: 'unflag', child: ListTile(leading: Icon(Icons.flag_outlined), title: Text('Remove Flag'))),
+        ],
+      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => UserDetailScreen(uid: uid)),
+        );
+      },
     );
+  }
+
+  Future<void> _showFlagDialog(BuildContext context) async {
+    String selectedField = 'bio';
+    final reasonCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setst) => AlertDialog(
+          title: const Text('Flag Profile Field'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedField,
+                decoration: const InputDecoration(labelText: 'Field to flag'),
+                items: const [
+                  DropdownMenuItem(value: 'bio', child: Text('Bio')),
+                  DropdownMenuItem(value: 'fullName', child: Text('Full Name')),
+                  DropdownMenuItem(value: 'photoUrl', child: Text('Profile Photo')),
+                  DropdownMenuItem(value: 'other', child: Text('Other')),
+                ],
+                onChanged: (v) => setst(() => selectedField = v ?? 'bio'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonCtrl,
+                decoration: const InputDecoration(labelText: 'Reason for flagging'),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Flag')),
+          ],
+        ),
+      ),
+    );
+    if (confirmed == true && reasonCtrl.text.trim().isNotEmpty) {
+      await AdminUserService().flagProfile(uid, selectedField, reasonCtrl.text.trim());
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile field "$selectedField" flagged')),
+        );
+      }
+    }
   }
 }

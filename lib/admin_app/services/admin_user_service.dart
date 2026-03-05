@@ -68,6 +68,49 @@ class AdminUserService {
     await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
   }
 
+  /// Flag a profile field as inappropriate
+  Future<void> flagProfile(String uid, String fieldName, String reason) async {
+    await _firestore.collection('users').doc(uid).update({
+      'isFlagged': true,
+      'flaggedFields': FieldValue.arrayUnion([
+        {
+          'field': fieldName,
+          'reason': reason,
+          'flaggedAt': FieldValue.serverTimestamp(),
+        }
+      ]),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Remove flag from a profile
+  Future<void> unflagProfile(String uid) async {
+    await _firestore.collection('users').doc(uid).update({
+      'isFlagged': false,
+      'flaggedFields': [],
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Send an in-app notification to a user
+  Future<void> sendNotificationToUser({
+    required String uid,
+    required String title,
+    required String body,
+    String type = 'system',
+    Map<String, dynamic> data = const {},
+  }) async {
+    await _firestore.collection('notifications').add({
+      'uid': uid,
+      'type': type,
+      'title': title,
+      'body': body,
+      'data': data,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   /// Search users by name (client-side filtering on result)
   Future<QuerySnapshot> searchUsers(String query) async {
     return _firestore
