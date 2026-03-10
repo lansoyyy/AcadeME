@@ -31,6 +31,7 @@ class FCMService {
   /// Initialize FCM and request permissions
   Future<void> initialize() async {
     await _initLocalNotifications();
+    await _requestLocalNotificationPermission();
     // Request permission (iOS)
     final settings = await _messaging.requestPermission(
       alert: true,
@@ -292,6 +293,29 @@ class FCMService {
         );
   }
 
+  Future<void> _requestLocalNotificationPermission() async {
+    if (kIsWeb) {
+      return;
+    }
+
+    if (Platform.isAndroid) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+      return;
+    }
+
+    if (Platform.isIOS) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    }
+  }
+
   /// Show a notification in the system notification tray.
   /// This method is self-contained so it can be called safely from the
   /// background isolate (which has its own plugin instance).
@@ -322,7 +346,7 @@ class FCMService {
       DateTime.now().millisecondsSinceEpoch ~/ 1000 % 100000,
       title,
       body,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'academe_notifications',
           'AcadeME Notifications',
@@ -330,8 +354,9 @@ class FCMService {
           importance: Importance.high,
           priority: Priority.high,
           showWhen: true,
+          styleInformation: BigTextStyleInformation(body),
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(),
       ),
     );
   }
