@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../services/notification_service.dart';
 
 /// Admin screen to review and approve/reject student registrations
 class RegistrationApprovalScreen extends StatefulWidget {
@@ -35,11 +36,24 @@ class _RegistrationApprovalScreenState extends State<RegistrationApprovalScreen>
         .snapshots();
   }
 
-  Future<void> _updateStatus(String uid, String newStatus) async {
-    await _firestore.collection('users').doc(uid).update({
+  Future<void> _updateStatus(
+    String uid,
+    String newStatus, {
+    String? rejectionReason,
+  }) async {
+    final Map<String, dynamic> updates = {
       'accountStatus': newStatus,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    };
+    if (rejectionReason != null) {
+      updates['rejectionReason'] = rejectionReason;
+    }
+    if (newStatus != 'rejected') {
+      // Clear old rejection reason when approving or moving back to pending;
+      // use FieldValue.delete() to remove the field entirely.
+      updates['rejectionReason'] = FieldValue.delete();
+    }
+    await _firestore.collection('users').doc(uid).update(updates);
   }
 
   @override
@@ -129,6 +143,8 @@ class _RegistrationApprovalScreenState extends State<RegistrationApprovalScreen>
     final birthday = data['birthday'] as String? ?? '';
     final age = data['age'] ?? '';
     final bio = data['bio'] as String? ?? '';
+    final rejectionReason = data['rejectionReason'] as String? ?? '';
+    final isResubmission = data['resubmittedAt'] != null;
     final createdAt = data['createdAt'];
     String dateStr = '';
     if (createdAt is Timestamp) {
@@ -232,8 +248,63 @@ class _RegistrationApprovalScreenState extends State<RegistrationApprovalScreen>
                   ),
                 ],
               ),
+            ],            // Resubmission badge
+            if (isResubmission && status == 'pending') ...[              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withAlpha(30),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.blue.withAlpha(100)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.refresh, size: 14, color: Colors.blue),
+                    SizedBox(width: 4),
+                    Text(
+                      'Resubmission',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
-            const Divider(height: 24),
+            // Rejection reason (shown on rejected cards)
+            if (status == 'rejected' && rejectionReason.isNotEmpty) ...[              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withAlpha(15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withAlpha(60)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Rejection reason:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      rejectionReason,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],            const Divider(height: 24),
             // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -328,6 +399,35 @@ class _RegistrationApprovalScreenState extends State<RegistrationApprovalScreen>
     required String name,
     required String action,
   }) async {
+    // For rejections, first ask the admin to choose a reason
+    if (action == 'reject') {
+      final reason = await _showRejectionReasonDialog(name);
+      if (reason == null) return; // admin cancelled
+      try {
+        await _updateStatus(uid, 'rejected', rejectionReason: reason);
+        await NotificationService().notifyApproval(
+          uid: uid,
+          status: 'rejected',
+          rejectionReason: reason,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$name has been rejected.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+      return;
+    }
+
     final String title;
     final String content;
     final String newStatus;
@@ -340,13 +440,6 @@ class _RegistrationApprovalScreenState extends State<RegistrationApprovalScreen>
             'Are you sure you want to approve $name\'s registration? They will be able to log in and use the app.';
         newStatus = 'approved';
         buttonColor = Colors.green;
-        break;
-      case 'reject':
-        title = 'Reject Registration';
-        content =
-            'Are you sure you want to reject $name\'s registration? They will not be able to access the app.';
-        newStatus = 'rejected';
-        buttonColor = Colors.red;
         break;
       case 'revoke':
         title = 'Revoke Approval';
@@ -381,6 +474,13 @@ class _RegistrationApprovalScreenState extends State<RegistrationApprovalScreen>
     if (confirmed == true) {
       try {
         await _updateStatus(uid, newStatus);
+        // Notify the user about the approve / revoke outcome
+        if (action == 'approve') {
+          await NotificationService().notifyApproval(
+            uid: uid,
+            status: 'approved',
+          );
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -399,6 +499,87 @@ class _RegistrationApprovalScreenState extends State<RegistrationApprovalScreen>
         }
       }
     }
+  }
+
+  /// Shows a dialog for the admin to select the reason for rejecting a user.
+  /// Returns the chosen reason string, or null if the admin cancelled.
+  Future<String?> _showRejectionReasonDialog(String name) async {
+    const predefinedReasons = [
+      'Incomplete information',
+      'Invalid school ID',
+      'Age requirement not met',
+      'Photo does not meet requirements',
+      'Duplicate account detected',
+      'Suspicious or false information',
+      'Other',
+    ];
+    String? selectedReason;
+    final customController = TextEditingController();
+
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setInner) => AlertDialog(
+          title: Text('Reject $name'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select a reason for rejection:'),
+                  const SizedBox(height: 8),
+                  ...predefinedReasons.map(
+                    (r) => RadioListTile<String>(
+                      value: r,
+                      groupValue: selectedReason,
+                      dense: true,
+                      title: Text(r),
+                      onChanged: (v) => setInner(() => selectedReason = v),
+                    ),
+                  ),
+                  if (selectedReason == 'Other') ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: customController,
+                      decoration: const InputDecoration(
+                        labelText: 'Specify reason',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: selectedReason == null
+                  ? null
+                  : () {
+                      final reason =
+                          selectedReason == 'Other' &&
+                                  customController.text.trim().isNotEmpty
+                              ? customController.text.trim()
+                              : selectedReason!;
+                      Navigator.pop(ctx, reason);
+                    },
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Reject'),
+            ),
+          ],
+        ),
+      ),
+    );
+    customController.dispose();
+    return result;
   }
 }
 

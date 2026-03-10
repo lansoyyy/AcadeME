@@ -252,19 +252,28 @@ class NotificationService {
     );
   }
 
-  /// Create registration approval notification
+  /// Create registration approval / rejection notification
   Future<void> notifyApproval({
     required String uid,
     required String status, // 'approved', 'rejected'
+    String? rejectionReason,
   }) async {
     final isApproved = status == 'approved';
+    final String body;
+    if (isApproved) {
+      body = 'Your registration has been approved. Welcome to AcadeME!';
+    } else if (rejectionReason != null && rejectionReason.isNotEmpty) {
+      body =
+          'Your registration was rejected. Reason: $rejectionReason. Please resubmit with corrected information.';
+    } else {
+      body =
+          'Your registration was not approved. Please resubmit with corrected information.';
+    }
     await createNotification(
       uid: uid,
       type: NotificationType.approval,
-      title: isApproved ? 'Registration Approved!' : 'Registration Status',
-      body: isApproved
-          ? 'Your registration has been approved. Welcome to AcadeME!'
-          : 'Your registration was not approved. Contact support for more information.',
+      title: isApproved ? 'Registration Approved!' : 'Registration Rejected',
+      body: body,
       data: {'route': isApproved ? '/home' : '/login'},
     );
   }

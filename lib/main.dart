@@ -15,8 +15,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Firebase must be initialised before any Firestore / Auth calls.
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('FCM [background]: ${message.notification?.title}');
-  // The OS will display the notification automatically when the message
-  // contains a notification payload sent from the server.
+  // Show system-tray notification for data-only messages (messages that have
+  // a notification payload are auto-displayed by the OS on Android).
+  final notification = message.notification;
+  if (notification != null) {
+    await FCMService().showLocalNotification(
+      title: notification.title ?? 'New Notification',
+      body: notification.body ?? '',
+    );
+  }
 }
 
 void main() async {

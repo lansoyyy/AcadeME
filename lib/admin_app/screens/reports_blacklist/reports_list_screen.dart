@@ -82,94 +82,145 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
   }
 }
 
-class _ReportCard extends StatelessWidget {
+class _ReportCard extends StatefulWidget {
   final QueryDocumentSnapshot report;
 
   const _ReportCard({required this.report});
 
   @override
+  State<_ReportCard> createState() => _ReportCardState();
+}
+
+class _ReportCardState extends State<_ReportCard> {
+  late Future<Map<String, String>> _namesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.report.data() as Map<String, dynamic>;
+    _namesFuture = _fetchNames(
+      data['reporterUid'] as String? ?? '',
+      data['reportedUid'] as String? ?? '',
+    );
+  }
+
+  Future<Map<String, String>> _fetchNames(
+    String reporterUid,
+    String reportedUid,
+  ) async {
+    final result = <String, String>{};
+    for (final uid in [reporterUid, reportedUid]) {
+      if (uid.isEmpty) continue;
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      result[uid] =
+          doc.data()?['fullName'] as String? ??
+          uid.substring(0, uid.length.clamp(0, 8));
+    }
+    return result;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final data = report.data() as Map<String, dynamic>;
-    final reporterUid = data['reporterUid'] ?? 'Unknown';
-    final reportedUid = data['reportedUid'] ?? 'Unknown';
+    final data = widget.report.data() as Map<String, dynamic>;
+    final reporterUid = data['reporterUid'] as String? ?? '';
+    final reportedUid = data['reportedUid'] as String? ?? '';
     final reason = data['reason'] ?? 'No reason provided';
     final status = (data['status'] as String?) ?? 'open';
     final createdAt = data['createdAt'] as Timestamp?;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return FutureBuilder<Map<String, String>>(
+      future: _namesFuture,
+      builder: (context, snap) {
+        final names = snap.data ?? {};
+        final reporterName = names[reporterUid] ??
+            (reporterUid.isEmpty
+                ? 'Unknown'
+                : reporterUid.substring(0, reporterUid.length.clamp(0, 8)));
+        final reportedName = names[reportedUid] ??
+            (reportedUid.isEmpty
+                ? 'Unknown'
+                : reportedUid.substring(0, reportedUid.length.clamp(0, 8)));
+
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(status),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(status),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        status.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
+                    const Spacer(),
+                    Text(
+                      _formatDate(createdAt?.toDate()),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 12),
                 Text(
-                  _formatDate(createdAt?.toDate()),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  'Reporter: $reporterName',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  'Reported: $reportedName',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.red,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(reason),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (status == 'open')
+                      TextButton(
+                        onPressed: () => _updateStatus(context, 'reviewing'),
+                        child: const Text('Start Review'),
+                      ),
+                    if (status != 'resolved')
+                      TextButton(
+                        onPressed: () =>
+                            _showActionDialog(context, reportedUid),
+                        child: const Text('Take Action'),
+                      ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Reporter: $reporterUid',
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-            Text(
-              'Reported: $reportedUid',
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.red,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(reason),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (status == 'open')
-                  TextButton(
-                    onPressed: () => _updateStatus(context, 'reviewing'),
-                    child: const Text('Start Review'),
-                  ),
-                if (status != 'resolved')
-                  TextButton(
-                    onPressed: () => _showActionDialog(context),
-                    child: const Text('Take Action'),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -194,7 +245,7 @@ class _ReportCard extends StatelessWidget {
   Future<void> _updateStatus(BuildContext context, String newStatus) async {
     await FirebaseFirestore.instance
         .collection('reports')
-        .doc(report.id)
+        .doc(widget.report.id)
         .update({
           'status': newStatus,
           'updatedAt': FieldValue.serverTimestamp(),
@@ -207,9 +258,10 @@ class _ReportCard extends StatelessWidget {
     }
   }
 
-  Future<void> _showActionDialog(BuildContext context) async {
-    final data = report.data() as Map<String, dynamic>;
-    final reportedUid = data['reportedUid'] as String?;
+  Future<void> _showActionDialog(
+    BuildContext context,
+    String reportedUid,
+  ) async {
 
     final action = await showDialog<String>(
       context: context,
@@ -224,14 +276,14 @@ class _ReportCard extends StatelessWidget {
               onTap: () => Navigator.pop(context, 'warning'),
             ),
             ListTile(
-              leading: const Icon(Icons.block, color: Colors.red),
-              title: const Text('Suspend User'),
+              leading: const Icon(Icons.block, color: Colors.orange),
+              title: const Text('Suspend User (7 days)'),
               onTap: () => Navigator.pop(context, 'suspend'),
             ),
             ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
-              title: const Text('Deactivate Account'),
-              onTap: () => Navigator.pop(context, 'deactivate'),
+              leading: const Icon(Icons.gavel, color: Colors.red),
+              title: const Text('Ban Account'),
+              onTap: () => Navigator.pop(context, 'ban'),
             ),
             ListTile(
               leading: const Icon(Icons.check_circle, color: Colors.green),
@@ -243,7 +295,7 @@ class _ReportCard extends StatelessWidget {
       ),
     );
 
-    if (action != null && reportedUid != null && reportedUid.isNotEmpty) {
+    if (action != null && reportedUid.isNotEmpty) {
       final adminService = AdminUserService();
       try {
         switch (action) {
@@ -271,13 +323,13 @@ class _ReportCard extends StatelessWidget {
               type: 'admin_action',
             );
             break;
-          case 'deactivate':
+          case 'ban':
             await adminService.updateUserStatus(reportedUid, false);
             await adminService.sendNotificationToUser(
               uid: reportedUid,
-              title: 'Account Deactivated',
+              title: 'Account Banned',
               body:
-                  'Your account has been deactivated due to a user report. Please contact support.',
+                  'Your account has been permanently banned due to a user report. Contact support to appeal.',
               type: 'admin_action',
             );
             break;
@@ -294,19 +346,20 @@ class _ReportCard extends StatelessWidget {
     }
 
     if (action != null) {
+      final resolvedAction = action == 'ban' ? 'banned' : action;
       await FirebaseFirestore.instance
           .collection('reports')
-          .doc(report.id)
+          .doc(widget.report.id)
           .update({
             'status': 'resolved',
-            'actionTaken': action,
+            'actionTaken': resolvedAction,
             'resolvedAt': FieldValue.serverTimestamp(),
           });
 
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Report resolved: $action')));
+        ).showSnackBar(SnackBar(content: Text('Report resolved: $resolvedAction')));
       }
     }
   }

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/notification.dart';
 import 'notification_service.dart';
 
@@ -17,11 +18,19 @@ class FCMService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<User?>? _authStateSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _notificationListenerSubscription;
+  bool _notificationListenerInitialized = false;
+  final Set<String> _knownNotificationIds = {};
 
   /// Initialize FCM and request permissions
   Future<void> initialize() async {
+    await _initLocalNotifications();
     // Request permission (iOS)
     final settings = await _messaging.requestPermission(
       alert: true,
@@ -54,6 +63,7 @@ class FCMService {
       if (token != null) {
         await _saveToken(token);
       }
+      _startFirestoreNotificationListener(currentUser.uid);
     }
 
     // Also save the token whenever a user signs in (covers the case where
@@ -66,6 +76,11 @@ class FCMService {
         if (token != null) {
           await _saveToken(token);
         }
+        _startFirestoreNotificationListener(user.uid);
+      } else {
+        _notificationListenerSubscription?.cancel();
+        _notificationListenerInitialized = false;
+        _knownNotificationIds.clear();
       }
     });
 
@@ -127,7 +142,7 @@ class FCMService {
     }
   }
 
-  /// Handle foreground messages - creates local notification in Firestore
+  /// Handle foreground messages - shows local notification and saves to Firestore
   void _handleForegroundMessage(RemoteMessage message) async {
     debugPrint('FCM: Foreground message received');
     debugPrint('Message data: ${message.data}');
@@ -135,6 +150,12 @@ class FCMService {
     final notification = message.notification;
     if (notification != null) {
       debugPrint('Notification: ${notification.title}');
+
+      // Show system tray notification
+      await showLocalNotification(
+        title: notification.title ?? 'New Notification',
+        body: notification.body ?? '',
+      );
 
       // Create notification in Firestore for in-app notification center
       final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -243,10 +264,118 @@ class FCMService {
     return 'unknown';
   }
 
+  /// Initialise the flutter_local_notifications plugin and create the
+  /// Android notification channel once per app session.
+  Future<void> _initLocalNotifications() async {
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false, // firebase_messaging handles this
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    await _localNotifications.initialize(
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
+    );
+    // Create high-importance channel so heads-up notifications are displayed
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'academe_notifications',
+            'AcadeME Notifications',
+            description: 'Push notifications for AcadeME',
+            importance: Importance.high,
+          ),
+        );
+  }
+
+  /// Show a notification in the system notification tray.
+  /// This method is self-contained so it can be called safely from the
+  /// background isolate (which has its own plugin instance).
+  Future<void> showLocalNotification({
+    required String title,
+    required String body,
+  }) async {
+    // Re-initialise if needed (e.g. background isolate)
+    await _localNotifications.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(),
+      ),
+    );
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'academe_notifications',
+            'AcadeME Notifications',
+            description: 'Push notifications for AcadeME',
+            importance: Importance.high,
+          ),
+        );
+    await _localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000 % 100000,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'academe_notifications',
+          'AcadeME Notifications',
+          channelDescription: 'Push notifications for AcadeME',
+          importance: Importance.high,
+          priority: Priority.high,
+          showWhen: true,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
+
+  /// Watch the Firestore notifications collection and surface new documents
+  /// as system tray notifications while the app is in the foreground.
+  void _startFirestoreNotificationListener(String uid) {
+    _notificationListenerSubscription?.cancel();
+    _notificationListenerInitialized = false;
+    _knownNotificationIds.clear();
+
+    _notificationListenerSubscription = _firestore
+        .collection('notifications')
+        .where('uid', isEqualTo: uid)
+        .snapshots()
+        .listen((snapshot) {
+          if (!_notificationListenerInitialized) {
+            // First snapshot: record existing IDs without showing anything
+            for (final doc in snapshot.docs) {
+              _knownNotificationIds.add(doc.id);
+            }
+            _notificationListenerInitialized = true;
+            return;
+          }
+          // Subsequent snapshots: show system notification for new docs
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.added &&
+                !_knownNotificationIds.contains(change.doc.id)) {
+              _knownNotificationIds.add(change.doc.id);
+              final data = change.doc.data()!;
+              showLocalNotification(
+                title: data['title'] as String? ?? 'New Notification',
+                body: data['body'] as String? ?? '',
+              );
+            }
+          }
+        });
+  }
+
   /// Cleanup
   void dispose() {
     _tokenRefreshSubscription?.cancel();
     _authStateSubscription?.cancel();
+    _notificationListenerSubscription?.cancel();
   }
 }
 

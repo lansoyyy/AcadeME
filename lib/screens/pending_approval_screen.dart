@@ -1,18 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 
-/// Screen shown to users whose registration is pending admin approval
-class PendingApprovalScreen extends StatelessWidget {
+/// Screen shown to users whose registration is pending or has been rejected.
+class PendingApprovalScreen extends StatefulWidget {
   final String status; // 'pending' or 'rejected'
 
   const PendingApprovalScreen({super.key, this.status = 'pending'});
 
   @override
-  Widget build(BuildContext context) {
-    final bool isRejected = status == 'rejected';
+  State<PendingApprovalScreen> createState() => _PendingApprovalScreenState();
+}
 
+class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
+  bool _isResubmitting = false;
+
+  Future<void> _resubmit() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    setState(() => _isResubmitting = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'accountStatus': 'pending',
+        'resubmittedAt': FieldValue.serverTimestamp(),
+        'rejectionReason': FieldValue.delete(),
+      });
+      // auth_gate will automatically redirect once accountStatus changes
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error resubmitting: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isResubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isRejected = widget.status == 'rejected';
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (isRejected && uid != null) {
+      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          final d = snapshot.data?.data();
+          final reason = d?['rejectionReason'] as String?;
+          return _buildBody(context, isRejected: true, rejectionReason: reason);
+        },
+      );
+    }
+
+    return _buildBody(context, isRejected: isRejected, rejectionReason: null);
+  }
+
+  Widget _buildBody(
+    BuildContext context, {
+    required bool isRejected,
+    String? rejectionReason,
+  }) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -48,8 +101,8 @@ class PendingApprovalScreen extends StatelessWidget {
               const SizedBox(height: AppConstants.paddingM),
               Text(
                 isRejected
-                    ? 'Your registration has been rejected by the admin. Please contact your school administrator for more information.'
-                    : 'Your registration is being reviewed by the admin. You will be able to access the app once your account is approved.',
+                    ? 'Your registration was rejected. Review the reason below, make the necessary corrections, then resubmit.'
+                    : 'Your registration is being reviewed by the admin. You will be able to access the app once approved.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -57,7 +110,72 @@ class PendingApprovalScreen extends StatelessWidget {
                   height: 1.5,
                 ),
               ),
-              const SizedBox(height: AppConstants.paddingXL * 2),
+              // Show rejection reason if available
+              if (isRejected && rejectionReason != null &&
+                  rejectionReason.isNotEmpty) ...[
+                const SizedBox(height: AppConstants.paddingL),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppConstants.paddingM),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withAlpha(15),
+                    borderRadius:
+                        BorderRadius.circular(AppConstants.radiusM),
+                    border: Border.all(color: Colors.red.withAlpha(80)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Reason for rejection:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        rejectionReason,
+                        style: const TextStyle(color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppConstants.paddingXL),
+              // Resubmit button (only for rejected users)
+              if (isRejected) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _isResubmitting ? null : _resubmit,
+                    icon: _isResubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.refresh),
+                    label: Text(
+                      _isResubmitting
+                          ? 'Resubmitting...'
+                          : 'Resubmit for Approval',
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppConstants.radiusM),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppConstants.paddingM),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -84,3 +202,4 @@ class PendingApprovalScreen extends StatelessWidget {
     );
   }
 }
+
