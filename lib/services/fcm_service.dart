@@ -1,377 +1,81 @@
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../models/notification.dart';
-import 'notification_service.dart';
 
-/// Top-level callback for notification taps — must be top-level so it can
-/// be called from both the main and background isolates.
+/// Top-level tap handler — must be a top-level function.
 @pragma('vm:entry-point')
-void _onLocalNotificationResponse(NotificationResponse details) {
-  debugPrint('FCM: Notification tapped: ${details.id}');
+void _onNotificationResponse(NotificationResponse details) {
+  debugPrint('Notification tapped id=${details.id}');
 }
 
-/// Service for handling Firebase Cloud Messaging (FCM) push notifications
+/// Drives system-tray notifications purely through Firestore.
+///
+/// No Firebase Cloud Messaging and no Cloud Functions are used.
+///
+/// How it works:
+///   1. Another user's device writes a doc to the `notifications` Firestore
+///      collection (e.g. ConversationService does this when a message is sent).
+///   2. This service keeps a real-time listener on that collection filtered
+///      to the currently signed-in user.
+///   3. When a new doc appears it calls flutter_local_notifications to show
+///      a heads-up notification in the device status bar.
 class FCMService {
   static final FCMService _instance = FCMService._internal();
   factory FCMService() => _instance;
   FCMService._internal();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  /// Tracks whether _localNotifications has been initialised in THIS isolate.
-  /// Static so each isolate (main vs background) keeps its own flag.
+  /// Tracks whether the plugin has been initialised in this Dart isolate.
   static bool _localNotificationsInitialized = false;
 
-  StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<User?>? _authStateSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
       _notificationListenerSubscription;
+
   bool _notificationListenerInitialized = false;
   String? _lastListeningUid;
   final Set<String> _knownNotificationIds = {};
 
-  /// Initialize FCM and request permissions
+  // ─────────────────────────────────────────────────────────────
+  // Public API
+  // ─────────────────────────────────────────────────────────────
+
+  /// Call once from main() before runApp().
   Future<void> initialize() async {
     await _initLocalNotifications();
-    await _requestLocalNotificationPermission();
-    // Request permission (iOS)
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
+    await _requestNotificationPermission();
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      debugPrint('FCM: User granted permission');
-      await _setupFCM();
-    } else if (settings.authorizationStatus ==
-        AuthorizationStatus.provisional) {
-      debugPrint('FCM: User granted provisional permission');
-      await _setupFCM(); // Still set up FCM for provisional notifications
-    } else {
-      debugPrint('FCM: User declined permission');
-      // Still set up message listeners; token won't deliver alerts but
-      // data-only messages and future permission grants will still work.
-      await _setupFCM();
-    }
-  }
-
-  /// Setup FCM token and listeners
-  Future<void> _setupFCM() async {
-    // Show notifications while app is in the foreground (iOS).
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    // Save token immediately if a user is already signed in.
-    // Do NOT start the Firestore listener here — the auth-state subscription
-    // below fires immediately and will start it, avoiding a duplicate.
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      final token = await _messaging.getToken();
-      if (token != null) {
-        await _saveToken(token);
-      }
-    }
-
-    // Also save the token whenever a user signs in (covers the case where
-    // FCM initialises before login, which is the most common app-start flow).
-    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((
-      user,
-    ) async {
+    // authStateChanges() emits immediately with the current user on startup,
+    // so a user who was already signed in gets their listener started right
+    // away without any extra checks.
+    _authStateSubscription =
+        FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
-        final token = await _messaging.getToken();
-        if (token != null) {
-          await _saveToken(token);
-        }
         _startFirestoreNotificationListener(user.uid);
       } else {
-        _notificationListenerSubscription?.cancel();
-        _notificationListenerInitialized = false;
-        _knownNotificationIds.clear();
+        _stopFirestoreNotificationListener();
       }
     });
-
-    // Listen for token refresh (device token can rotate)
-    _tokenRefreshSubscription = _messaging.onTokenRefresh.listen(
-      (newToken) => _saveToken(newToken),
-      onError: (err) => debugPrint('FCM Token refresh error: $err'),
-    );
-
-    // Setup foreground message handler
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-    // Handle notification open (app in background/terminated)
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpen);
   }
 
-  /// Save FCM token to Firestore
-  Future<void> _saveToken(String token) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    try {
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('fcmTokens')
-          .doc(token)
-          .set({
-            'token': token,
-            'platform': _getPlatform(),
-            'createdAt': FieldValue.serverTimestamp(),
-            'lastUpdatedAt': FieldValue.serverTimestamp(),
-          });
-      debugPrint('FCM: Token saved successfully');
-    } catch (e) {
-      debugPrint('FCM: Error saving token: $e');
-    }
-  }
-
-  /// Delete FCM token (on logout)
-  Future<void> deleteToken() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    try {
-      final token = await _messaging.getToken();
-      if (token != null) {
-        await _firestore
-            .collection('users')
-            .doc(uid)
-            .collection('fcmTokens')
-            .doc(token)
-            .delete();
-      }
-      await _messaging.deleteToken();
-      debugPrint('FCM: Token deleted');
-    } catch (e) {
-      debugPrint('FCM: Error deleting token: $e');
-    }
-  }
-
-  /// Handle foreground messages - shows local notification and saves to Firestore
-  void _handleForegroundMessage(RemoteMessage message) async {
-    debugPrint('FCM: Foreground message received');
-    debugPrint('Message data: ${message.data}');
-
-    final notification = message.notification;
-    if (notification != null) {
-      debugPrint('Notification: ${notification.title}');
-
-      // Show system tray notification
-      await showLocalNotification(
-        title: notification.title ?? 'New Notification',
-        body: notification.body ?? '',
-      );
-
-      // Create notification in Firestore for in-app notification center
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        final notificationService = NotificationService();
-
-        final type = _parseNotificationType(message.data['type']);
-        await notificationService.createNotification(
-          uid: uid,
-          type: type,
-          title: notification.title ?? 'New Notification',
-          body: notification.body ?? '',
-          data: Map<String, dynamic>.from(message.data),
-        );
-      }
-
-      _showInAppNotification(message);
-    }
-  }
-
-  /// Parse notification type from string
-  NotificationType _parseNotificationType(String? type) {
-    switch (type) {
-      case 'match':
-        return NotificationType.match;
-      case 'message':
-        return NotificationType.message;
-      case 'study_session':
-        return NotificationType.studySession;
-      case 'study_group':
-        return NotificationType.studyGroup;
-      case 'approval':
-        return NotificationType.approval;
-      default:
-        return NotificationType.system;
-    }
-  }
-
-  /// Handle notification tap when app is in background
-  void _handleNotificationOpen(RemoteMessage message) {
-    debugPrint('FCM: Notification opened');
-    // Navigation handled by the app based on message data
-    final data = message.data;
-    if (data['conversationId'] != null) {
-      // Navigate to specific chat
-      // This should be handled by a navigation service or global key
-    }
-  }
-
-  /// Show in-app notification for foreground messages
-  void _showInAppNotification(RemoteMessage message) {
-    // This can be implemented using a global overlay or snackbar
-    // For now, just log it - the UI will update via streams
-    debugPrint('FCM: In-app notification - ${message.notification?.title}');
-  }
-
-  /// Update FCM topic subscriptions to match the user's notification preferences.
-  /// This lets the server send to topics and reach only users who opted in.
-  Future<void> updateTopicSubscriptions({
-    required bool newMatches,
-    required bool newMessages,
-    required bool sessionReminders,
-    required bool studyTips,
-    required bool marketing,
-  }) async {
-    final actions = {
-      'new_matches': newMatches,
-      'new_messages': newMessages,
-      'session_reminders': sessionReminders,
-      'study_tips': studyTips,
-      'marketing': marketing,
-    };
-
-    for (final entry in actions.entries) {
-      try {
-        if (entry.value) {
-          await _messaging.subscribeToTopic(entry.key);
-        } else {
-          await _messaging.unsubscribeFromTopic(entry.key);
-        }
-      } catch (e) {
-        debugPrint('FCM: Error updating topic ${entry.key}: $e');
-      }
-    }
-    debugPrint('FCM: Topic subscriptions updated');
-  }
-
-  /// Subscribe to a topic
-  Future<void> subscribeToTopic(String topic) async {
-    await _messaging.subscribeToTopic(topic);
-  }
-
-  /// Unsubscribe from a topic
-  Future<void> unsubscribeFromTopic(String topic) async {
-    await _messaging.unsubscribeFromTopic(topic);
-  }
-
-  /// Get device platform string
-  String _getPlatform() {
-    if (kIsWeb) return 'web';
-    if (Platform.isAndroid) return 'android';
-    if (Platform.isIOS) return 'ios';
-    if (Platform.isMacOS) return 'macos';
-    if (Platform.isWindows) return 'windows';
-    if (Platform.isLinux) return 'linux';
-    return 'unknown';
-  }
-
-  /// Initialise the flutter_local_notifications plugin and create the
-  /// Android notification channel once per app session.
-  Future<void> _initLocalNotifications() async {
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: false, // firebase_messaging handles this
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
-    await _localNotifications.initialize(
-      const InitializationSettings(android: androidSettings, iOS: iosSettings),
-      onDidReceiveNotificationResponse: _onLocalNotificationResponse,
-    );
-    // Create high-importance channel so heads-up notifications are displayed
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(
-          const AndroidNotificationChannel(
-            'academe_notifications',
-            'AcadeME Notifications',
-            description: 'Push notifications for AcadeME',
-            importance: Importance.high,
-          ),
-        );
-    _localNotificationsInitialized = true;
-  }
-
-  Future<void> _requestLocalNotificationPermission() async {
-    if (kIsWeb) {
-      return;
-    }
-
-    if (Platform.isAndroid) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
-      return;
-    }
-
-    if (Platform.isIOS) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-    }
-  }
-
-  /// Show a notification in the system notification tray.
-  /// This method is self-contained so it can be called safely from the
-  /// background isolate (which has its own plugin instance).
+  /// Show a notification in the system tray immediately.
   Future<void> showLocalNotification({
     required String title,
     required String body,
   }) async {
-    // Only initialise once per isolate. The main isolate calls
-    // _initLocalNotifications() during FCMService.initialize().
-    // The background isolate never calls initialize() so its static
-    // _localNotificationsInitialized stays false until here.
     if (!_localNotificationsInitialized) {
-      await _localNotifications.initialize(
-        const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(),
-        ),
-        onDidReceiveNotificationResponse: _onLocalNotificationResponse,
-      );
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.createNotificationChannel(
-            const AndroidNotificationChannel(
-              'academe_notifications',
-              'AcadeME Notifications',
-              description: 'Push notifications for AcadeME',
-              importance: Importance.high,
-            ),
-          );
-      _localNotificationsInitialized = true;
+      await _initLocalNotifications();
     }
     await _localNotifications.show(
+      // Rolling ID so successive notifications don't replace each other.
       DateTime.now().millisecondsSinceEpoch ~/ 1000 % 100000,
       title,
       body,
@@ -379,22 +83,79 @@ class FCMService {
         android: AndroidNotificationDetails(
           'academe_notifications',
           'AcadeME Notifications',
-          channelDescription: 'Push notifications for AcadeME',
-          importance: Importance.high,
+          channelDescription: 'Notifications for AcadeME',
+          importance: Importance.max, // triggers the heads-up (peeking) banner
           priority: Priority.high,
           showWhen: true,
+          enableVibration: true,
+          playSound: true,
           styleInformation: BigTextStyleInformation(body),
         ),
-        iOS: const DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
     );
   }
 
-  /// Watch the Firestore notifications collection and surface new documents
-  /// as system tray notifications while the app is in the foreground.
+  void dispose() {
+    _authStateSubscription?.cancel();
+    _notificationListenerSubscription?.cancel();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Internal helpers
+  // ─────────────────────────────────────────────────────────────
+
+  Future<void> _initLocalNotifications() async {
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    await _localNotifications.initialize(
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
+      onDidReceiveNotificationResponse: _onNotificationResponse,
+    );
+    // Create (or update) the high-importance Android notification channel.
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'academe_notifications',
+            'AcadeME Notifications',
+            description: 'Notifications for AcadeME',
+            importance: Importance.high,
+          ),
+        );
+    _localNotificationsInitialized = true;
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    if (kIsWeb) return;
+    if (Platform.isAndroid) {
+      // Required for Android 13+ (API 33+).
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+    } else if (Platform.isIOS) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    }
+  }
+
+  /// Subscribe to Firestore `notifications` for [uid] and show a local
+  /// notification each time a new doc is added by another user.
   void _startFirestoreNotificationListener(String uid) {
-    // Already listening for this exact user — don't restart and lose the
-    // baseline, which would cause all existing notifications to re-fire.
+    // Guard: don't restart if we're already listening for this user.
     if (_notificationListenerInitialized && _lastListeningUid == uid) return;
 
     _lastListeningUid = uid;
@@ -406,67 +167,43 @@ class FCMService {
         .collection('notifications')
         .where('uid', isEqualTo: uid)
         .snapshots()
-        .listen((snapshot) {
-          if (!_notificationListenerInitialized) {
-            // First snapshot: record existing IDs without showing anything
-            for (final doc in snapshot.docs) {
-              _knownNotificationIds.add(doc.id);
-            }
-            _notificationListenerInitialized = true;
-            return;
+        .listen(
+      (snapshot) {
+        if (!_notificationListenerInitialized) {
+          // First emission — baseline: record all existing doc IDs so we
+          // do NOT show notifications for old entries on app launch.
+          for (final doc in snapshot.docs) {
+            _knownNotificationIds.add(doc.id);
           }
-          // Subsequent snapshots: show system notification for new docs
-          for (final change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added &&
-                !_knownNotificationIds.contains(change.doc.id)) {
-              _knownNotificationIds.add(change.doc.id);
-              final data = change.doc.data()!;
-              showLocalNotification(
-                title: data['title'] as String? ?? 'New Notification',
-                body: data['body'] as String? ?? '',
-              );
-            }
+          _notificationListenerInitialized = true;
+          return;
+        }
+
+        // Subsequent emissions — act only on newly added docs.
+        for (final change in snapshot.docChanges) {
+          if (change.type == DocumentChangeType.added &&
+              !_knownNotificationIds.contains(change.doc.id)) {
+            _knownNotificationIds.add(change.doc.id);
+            final data = change.doc.data()!;
+            showLocalNotification(
+              title: data['title'] as String? ?? 'New Notification',
+              body: data['body'] as String? ?? '',
+            );
           }
-        });
-  }
-
-  /// Cleanup
-  void dispose() {
-    _tokenRefreshSubscription?.cancel();
-    _authStateSubscription?.cancel();
-    _notificationListenerSubscription?.cancel();
-  }
-}
-
-/// Model for FCM notification payload
-class FCMNotificationPayload {
-  final String title;
-  final String body;
-  final String? conversationId;
-  final String? senderId;
-  final String? senderName;
-  final String? type;
-
-  FCMNotificationPayload({
-    required this.title,
-    required this.body,
-    this.conversationId,
-    this.senderId,
-    this.senderName,
-    this.type,
-  });
-
-  factory FCMNotificationPayload.fromMessage(RemoteMessage message) {
-    final notification = message.notification;
-    final data = message.data;
-
-    return FCMNotificationPayload(
-      title: notification?.title ?? '',
-      body: notification?.body ?? '',
-      conversationId: data['conversationId'] as String?,
-      senderId: data['senderId'] as String?,
-      senderName: data['senderName'] as String?,
-      type: data['type'] as String?,
+        }
+      },
+      onError: (Object e) {
+        debugPrint('FCMService: Firestore listener error: $e');
+        // Reset so the listener restarts on the next auth-state change.
+        _notificationListenerInitialized = false;
+      },
     );
+  }
+
+  void _stopFirestoreNotificationListener() {
+    _notificationListenerSubscription?.cancel();
+    _notificationListenerInitialized = false;
+    _lastListeningUid = null;
+    _knownNotificationIds.clear();
   }
 }

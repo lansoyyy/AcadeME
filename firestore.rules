@@ -153,10 +153,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Notifications collection - user can read own, system/admin can create
+    // Notifications collection
+    // Any authenticated user may CREATE a notification for any other user
+    // (needed because there are no Cloud Functions — client-side code on
+    // User A's device writes the notification doc for User B).
+    // Read / update / delete are restricted to the notification's owner.
     match /notifications/{notificationId} {
       allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.uid is string
+                    && request.resource.data.uid.size() > 0;
       allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
     }

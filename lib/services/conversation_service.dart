@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'notification_service.dart';
 
 /// Message types
 enum MessageType { text, image, file, system }
@@ -233,6 +235,43 @@ class ConversationService {
         'unreadCount.$otherParticipantId': FieldValue.increment(1),
       });
     });
+
+    // After the transaction succeeds, create a Firestore notification doc
+    // for the recipient.  This is what triggers their on-device Firestore
+    // listener and shows the system-tray notification.
+    // We skip system-generated messages (senderId == 'system').
+    if (senderId != 'system') {
+      try {
+        // Fetch the sender's display name for the notification title.
+        final senderDoc = await _firestore
+            .collection('users')
+            .doc(senderId)
+            .get();
+        final senderName =
+            senderDoc.data()?['fullName'] as String? ?? 'Someone';
+
+        final String messagePreview;
+        if (type == MessageType.text) {
+          final raw = text ?? '';
+          messagePreview =
+              raw.length > 100 ? '${raw.substring(0, 100)}…' : raw;
+        } else if (type == MessageType.image) {
+          messagePreview = '📷 Sent a photo';
+        } else {
+          messagePreview = '📎 Sent a file: ${fileName ?? 'file'}';
+        }
+
+        await NotificationService().notifyMessage(
+          uid: otherParticipantId,
+          senderName: senderName,
+          messagePreview: messagePreview,
+          conversationId: conversationId,
+        );
+      } catch (e) {
+        // Notification failure must not break message delivery.
+        debugPrint('ConversationService: failed to create notification: $e');
+      }
+    }
   }
 
   /// Mark messages as read for current user

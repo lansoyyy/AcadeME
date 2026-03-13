@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'notification_service.dart';
 
 /// Enum for swipe directions
 enum SwipeDirection { like, nope, superlike }
@@ -176,6 +178,29 @@ class SwipeService {
           'clientId': 'system_${DateTime.now().millisecondsSinceEpoch}',
         });
       });
+
+      // Transaction succeeded — notify both users.
+      // Done outside the transaction so a notification failure can never
+      // roll back the match/conversation creation.
+      try {
+        final fromDoc = await _usersRef.doc(fromUid).get();
+        final toDoc = await _usersRef.doc(toUid).get();
+        final fromName = fromDoc.data()?['fullName'] as String? ?? 'Someone';
+        final toName = toDoc.data()?['fullName'] as String? ?? 'Someone';
+
+        await NotificationService().notifyMatch(
+          uid: toUid,
+          matchedUserName: fromName,
+          conversationId: conversationId,
+        );
+        await NotificationService().notifyMatch(
+          uid: fromUid,
+          matchedUserName: toName,
+          conversationId: conversationId,
+        );
+      } catch (e) {
+        debugPrint('SwipeService: failed to create match notifications: $e');
+      }
 
       return SwipeResult(
         isMatch: true,
