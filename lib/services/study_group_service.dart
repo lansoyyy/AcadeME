@@ -100,6 +100,9 @@ class StudyGroupService {
     if (!doc.exists) throw Exception('Group not found');
 
     final data = doc.data()!;
+    if (data['isActive'] == false) {
+      throw Exception('This study group is no longer available');
+    }
     final members = List<String>.from(data['members'] ?? []);
     final maxMembers = data['maxMembers'] as int? ?? 10;
 
@@ -148,6 +151,9 @@ class StudyGroupService {
     if (!doc.exists) return;
 
     final data = doc.data()!;
+    if (data['isActive'] == false) {
+      return;
+    }
     if (data['ownerUid'] != currentUser.uid) {
       throw Exception('Only the owner can delete this group');
     }
@@ -171,6 +177,9 @@ class StudyGroupService {
     if (!doc.exists) throw Exception('Group not found');
 
     final data = doc.data()!;
+    if (data['isActive'] == false) {
+      throw Exception('This study group is no longer available');
+    }
     final members = List<String>.from(data['members'] ?? []);
     final maxMembers = data['maxMembers'] as int? ?? 10;
     final groupName = data['name'] as String? ?? 'the group';
@@ -236,6 +245,16 @@ class StudyGroupService {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) throw Exception('User not authenticated');
 
+    final groupDoc = await _groupsRef.doc(groupId).get();
+    if (!groupDoc.exists) {
+      throw Exception('Group not found');
+    }
+
+    final groupData = groupDoc.data()!;
+    if (groupData['isActive'] == false) {
+      throw Exception('This study group is no longer available');
+    }
+
     await _groupsRef.doc(groupId).collection('messages').add({
       'senderUid': currentUser.uid,
       'text': text,
@@ -264,6 +283,7 @@ class StudyGroupService {
   Future<StudyGroup?> getGroup(String groupId) async {
     final doc = await _groupsRef.doc(groupId).get();
     if (!doc.exists) return null;
+    if (doc.data()?['isActive'] == false) return null;
     return StudyGroup.fromDoc(doc);
   }
 }

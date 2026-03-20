@@ -8,6 +8,7 @@ import '../screens/reports_blacklist/reports_list_screen.dart';
 import '../screens/analytics/analytics_dashboard_screen.dart';
 import '../screens/feedback_ratings/ratings_overview_screen.dart';
 import '../screens/registration_approval/registration_approval_screen.dart';
+import '../screens/study_groups/study_groups_moderation_screen.dart';
 
 /// AdminShell - Main navigation container for admin interface
 /// Provides NavigationRail (desktop/tablet) or Drawer (mobile)
@@ -59,13 +60,20 @@ class _AdminShellState extends State<AdminShell> {
     ),
     _NavigationItem(
       index: 5,
+      label: 'Study Groups',
+      icon: Icons.groups_outlined,
+      selectedIcon: Icons.groups,
+      screen: const StudyGroupsModerationScreen(),
+    ),
+    _NavigationItem(
+      index: 6,
       label: 'Ratings',
       icon: Icons.star_outline,
       selectedIcon: Icons.star,
       screen: const RatingsOverviewScreen(),
     ),
     _NavigationItem(
-      index: 6,
+      index: 7,
       label: 'Registrations',
       icon: Icons.how_to_reg_outlined,
       selectedIcon: Icons.how_to_reg,

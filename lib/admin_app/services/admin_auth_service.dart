@@ -15,54 +15,75 @@ class AdminAuthService extends ChangeNotifier {
   bool _isAuthenticated = false;
   User? _firebaseUser;
   String _adminUsername = '';
+  String? _lastErrorMessage;
 
   bool get isAuthenticated => _isAuthenticated;
   User? get firebaseUser => _firebaseUser;
   String get adminUsername => _adminUsername;
+  String? get lastErrorMessage => _lastErrorMessage;
 
   /// Initialize and check for existing session
   Future<void> initialize() async {
-    // In-memory session only (no persistence without shared_preferences)
-    // Can be enhanced later if needed
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return;
+    }
+
+    final email = currentUser.email?.trim().toLowerCase();
+    if (email == AdminConfig.adminEmail.toLowerCase()) {
+      _firebaseUser = currentUser;
+      _isAuthenticated = true;
+      _adminUsername = AdminConfig.adminUsername;
+      notifyListeners();
+      return;
+    }
+
+    await FirebaseAuth.instance.signOut();
   }
 
-  /// Login with hardcoded credentials only (no Firebase Auth required)
-  /// Returns true if successful
+  /// Login with UI credentials and the Firebase admin account.
   Future<bool> login(String username, String password) async {
+    _lastErrorMessage = null;
     debugPrint('AdminAuthService.hashCode: ${hashCode}');
     debugPrint(
       'Admin login attempt: username="$username", password="${password.isNotEmpty ? "***" : "empty"}"',
     );
 
-    // Hardcoded admin check - no Firebase Auth needed
-    if (username == 'admin' && password == 'academe_admin_2026') {
-      _isAuthenticated = true;
-      _adminUsername = username;
-      debugPrint('Admin login SUCCESS - isAuthenticated: $_isAuthenticated');
-      debugPrint('Admin login SUCCESS - Calling notifyListeners()');
-      notifyListeners();
-      debugPrint(
-        'Admin login SUCCESS - notifyListeners() called, listener count: ${hasListeners ? "has listeners" : "NO LISTENERS!"}',
-      );
-      return true;
+    if (username != AdminConfig.adminUsername ||
+        password != AdminConfig.adminPassword) {
+      _lastErrorMessage = 'Invalid username or password';
+      debugPrint('Admin login FAILED: invalid UI credentials');
+      return false;
     }
-    debugPrint('Admin login FAILED: invalid credentials');
-    return false;
-  }
 
-  /// Optional: Sign into Firebase Auth as admin
-  /// This enables privileged Firestore access
-  Future<bool> signInToFirebase() async {
     try {
+      if (FirebaseAuth.instance.currentUser != null) {
+        await FirebaseAuth.instance.signOut();
+      }
+
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: AdminConfig.adminEmail,
         password: AdminConfig.adminFirebasePassword,
       );
+
       _firebaseUser = credential.user;
+      _isAuthenticated = true;
+      _adminUsername = username;
+
+      debugPrint('Admin login SUCCESS - Firebase admin session established');
       notifyListeners();
       return true;
-    } catch (e) {
-      debugPrint('Firebase admin sign-in failed: $e');
+    } on FirebaseAuthException catch (error) {
+      _isAuthenticated = false;
+      _firebaseUser = null;
+      _adminUsername = '';
+      _lastErrorMessage = switch (error.code) {
+        'user-not-found' => 'Admin Firebase account is not set up.',
+        'wrong-password' ||
+        'invalid-credential' => 'Admin Firebase credentials are invalid.',
+        _ => 'Admin backend sign-in failed: ${error.message ?? error.code}',
+      };
+      debugPrint('Firebase admin sign-in failed: $error');
       return false;
     }
   }
@@ -71,6 +92,7 @@ class AdminAuthService extends ChangeNotifier {
   Future<void> logout() async {
     _isAuthenticated = false;
     _adminUsername = '';
+    _lastErrorMessage = null;
 
     // Sign out from Firebase
     if (_firebaseUser != null) {

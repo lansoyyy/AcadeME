@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../services/admin_moderation_service.dart';
 import '../../services/admin_user_service.dart';
 
 /// User Detail Screen
@@ -15,6 +16,7 @@ class UserDetailScreen extends StatefulWidget {
 
 class _UserDetailScreenState extends State<UserDetailScreen> {
   final AdminUserService _userService = AdminUserService();
+  final AdminModerationService _moderationService = AdminModerationService();
 
   @override
   Widget build(BuildContext context) {
@@ -263,6 +265,15 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   icon: const Icon(Icons.lock_reset),
                   label: const Text('Reset Password'),
                 ),
+                ElevatedButton.icon(
+                  onPressed: () => _showDeleteAccountDialog(data),
+                  icon: const Icon(Icons.delete_forever),
+                  label: const Text('Delete Account'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ],
             ),
           ],
@@ -455,6 +466,73 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           const SnackBar(content: Text('Password reset email sent')),
         );
       }
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog(Map<String, dynamic> data) async {
+    final name = data['fullName'] ?? 'this user';
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Delete Account'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Permanently delete $name and their related data.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Reason',
+                  hintText: 'Required admin note',
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (reason == null || reason.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final result = await _moderationService.deleteUserAccount(
+        uid: widget.uid,
+        reason: reason.trim(),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete account: $error')),
+      );
     }
   }
 }

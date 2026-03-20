@@ -17,14 +17,13 @@ class _AdminAppState extends State<AdminApp> {
   @override
   void initState() {
     super.initState();
+    _authService.initialize();
     debugPrint(
       'AdminApp.initState() - AdminAuthService hashCode: ${_authService.hashCode}',
     );
     debugPrint('AdminApp.initState() - Adding listener to AdminAuthService');
     _authService.addListener(_onAuthChanged);
-    debugPrint(
-      'AdminApp.initState() - Listener added, hasListeners: ${_authService.hasListeners}',
-    );
+    debugPrint('AdminApp.initState() - Listener added');
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../services/admin_moderation_service.dart';
 import '../../services/admin_user_service.dart';
 import 'user_detail_screen.dart';
 
@@ -14,6 +15,7 @@ class UsersListScreen extends StatefulWidget {
 
 class _UsersListScreenState extends State<UsersListScreen> {
   final AdminUserService _userService = AdminUserService();
+  final AdminModerationService _moderationService = AdminModerationService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _filterGradeLevel;
@@ -62,6 +64,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                   return _UserListTile(
                     userDoc: user,
                     onTap: () => _navigateToUserDetail(user.id),
+                    onDelete: () => _deleteUser(user.id, user),
                   );
                 },
               );
@@ -95,7 +98,8 @@ class _UsersListScreenState extends State<UsersListScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
+            onChanged: (value) =>
+                setState(() => _searchQuery = value.toLowerCase()),
           ),
           const SizedBox(height: 12),
           Row(
@@ -113,7 +117,8 @@ class _UsersListScreenState extends State<UsersListScreen> {
                   items: const ['All', '11', '12'].map((item) {
                     return DropdownMenuItem(value: item, child: Text(item));
                   }).toList(),
-                  onChanged: (value) => setState(() => _filterGradeLevel = value),
+                  onChanged: (value) =>
+                      setState(() => _filterGradeLevel = value),
                 ),
               ),
               const SizedBox(width: 12),
@@ -127,7 +132,9 @@ class _UsersListScreenState extends State<UsersListScreen> {
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
-                  items: const ['All', 'STEM', 'ABM', 'HUMSS', 'TVL'].map((item) {
+                  items: const ['All', 'STEM', 'ABM', 'HUMSS', 'TVL'].map((
+                    item,
+                  ) {
                     return DropdownMenuItem(value: item, child: Text(item));
                   }).toList(),
                   onChanged: (value) => setState(() => _filterTrack = value),
@@ -166,20 +173,94 @@ class _UsersListScreenState extends State<UsersListScreen> {
   void _navigateToUserDetail(String uid) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => UserDetailScreen(uid: uid),
+      MaterialPageRoute(builder: (context) => UserDetailScreen(uid: uid)),
+    );
+  }
+
+  Future<void> _deleteUser(String uid, QueryDocumentSnapshot userDoc) async {
+    final data = userDoc.data() as Map<String, dynamic>;
+    final userName = data['fullName'] as String? ?? 'this user';
+    final reasonController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Permanently delete $userName and their related data.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Reason',
+                hintText: 'Required admin note',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                return;
+              }
+              Navigator.pop(dialogContext, true);
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
+
+    if (confirmed != true) {
+      reasonController.dispose();
+      return;
+    }
+
+    try {
+      final result = await _moderationService.deleteUserAccount(
+        uid: uid,
+        reason: reasonController.text.trim(),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete account: $error')),
+      );
+    } finally {
+      reasonController.dispose();
+    }
   }
 }
 
 class _UserListTile extends StatelessWidget {
   final QueryDocumentSnapshot userDoc;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   const _UserListTile({
     required this.userDoc,
     required this.onTap,
+    required this.onDelete,
   });
 
   @override
@@ -211,7 +292,22 @@ class _UserListTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(Icons.chevron_right),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'delete') {
+                onDelete();
+                return;
+              }
+              onTap();
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(value: 'view', child: Text('View Details')),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Text('Delete Account'),
+              ),
+            ],
+          ),
         ],
       ),
       onTap: onTap,

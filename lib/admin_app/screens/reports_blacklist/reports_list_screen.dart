@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../services/admin_moderation_service.dart';
 import '../../services/admin_user_service.dart';
 
 /// Reports List Screen
@@ -135,11 +136,13 @@ class _ReportCardState extends State<_ReportCard> {
       future: _namesFuture,
       builder: (context, snap) {
         final names = snap.data ?? {};
-        final reporterName = names[reporterUid] ??
+        final reporterName =
+            names[reporterUid] ??
             (reporterUid.isEmpty
                 ? 'Unknown'
                 : reporterUid.substring(0, reporterUid.length.clamp(0, 8)));
-        final reportedName = names[reportedUid] ??
+        final reportedName =
+            names[reportedUid] ??
             (reportedUid.isEmpty
                 ? 'Unknown'
                 : reportedUid.substring(0, reportedUid.length.clamp(0, 8)));
@@ -262,7 +265,6 @@ class _ReportCardState extends State<_ReportCard> {
     BuildContext context,
     String reportedUid,
   ) async {
-
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -286,6 +288,11 @@ class _ReportCardState extends State<_ReportCard> {
               onTap: () => Navigator.pop(context, 'ban'),
             ),
             ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('Delete Account'),
+              onTap: () => Navigator.pop(context, 'delete_account'),
+            ),
+            ListTile(
               leading: const Icon(Icons.check_circle, color: Colors.green),
               title: const Text('Dismiss Report'),
               onTap: () => Navigator.pop(context, 'dismiss'),
@@ -297,6 +304,7 @@ class _ReportCardState extends State<_ReportCard> {
 
     if (action != null && reportedUid.isNotEmpty) {
       final adminService = AdminUserService();
+      final moderationService = AdminModerationService();
       try {
         switch (action) {
           case 'warning':
@@ -333,6 +341,17 @@ class _ReportCardState extends State<_ReportCard> {
               type: 'admin_action',
             );
             break;
+          case 'delete_account':
+            final result = await moderationService.deleteUserAccount(
+              uid: reportedUid,
+              reason: 'Deleted after report review (${widget.report.id})',
+            );
+            if (context.mounted) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(result.message)));
+            }
+            break;
           default:
             break;
         }
@@ -346,7 +365,11 @@ class _ReportCardState extends State<_ReportCard> {
     }
 
     if (action != null) {
-      final resolvedAction = action == 'ban' ? 'banned' : action;
+      final resolvedAction = switch (action) {
+        'ban' => 'banned',
+        'delete_account' => 'account_deleted',
+        _ => action,
+      };
       await FirebaseFirestore.instance
           .collection('reports')
           .doc(widget.report.id)
@@ -357,9 +380,9 @@ class _ReportCardState extends State<_ReportCard> {
           });
 
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Report resolved: $resolvedAction')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Report resolved: $resolvedAction')),
+        );
       }
     }
   }

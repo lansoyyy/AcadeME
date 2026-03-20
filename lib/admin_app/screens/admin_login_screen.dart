@@ -27,6 +27,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   }
 
   Future<void> _login() async {
+    final authService = AdminAuthService();
     debugPrint('Login button pressed');
 
     if (!_formKey.currentState!.validate()) {
@@ -44,7 +45,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     final password = _passwordController.text;
     debugPrint('Calling AdminAuthService.login() with username: $username');
 
-    final success = await AdminAuthService().login(username, password);
+    final success = await authService.login(username, password);
     debugPrint('Login result: $success');
 
     if (!mounted) return;
@@ -58,7 +59,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const AdminShell()));
     } else {
       setState(() {
-        _errorMessage = 'Invalid username or password';
+        _errorMessage = authService.lastErrorMessage ?? 'Unable to sign in';
       });
     }
   }
