@@ -585,22 +585,6 @@ class _FindBuddyScreenState extends State<FindBuddyScreen> {
     );
   }
 
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filters'),
-        content: const Text('Filter options coming soon!'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showReportDialog(UserProfile profile) {
     showModalBottomSheet(
       context: context,

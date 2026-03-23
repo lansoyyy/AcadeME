@@ -1,9 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  AuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
 
   Stream<User?> authStateChanges() => _auth.authStateChanges();
 
@@ -12,8 +16,30 @@ class AuthService {
   Future<UserCredential> signIn({
     required String email,
     required String password,
-  }) {
-    return _auth.signInWithEmailAndPassword(email: email, password: password);
+  }) async {
+    final credential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    final uid = credential.user?.uid;
+    if (uid == null) {
+      return credential;
+    }
+
+    final profileDoc = await _firestore.collection('users').doc(uid).get();
+    final profileData = profileDoc.data();
+    final accountStatus = profileData?['accountStatus'] as String?;
+
+    if (accountStatus == 'deleted') {
+      await _auth.signOut();
+      throw FirebaseAuthException(
+        code: 'account-disabled',
+        message: 'This account has been deleted and can no longer sign in.',
+      );
+    }
+
+    return credential;
   }
 
   Future<UserCredential> register({

@@ -51,6 +51,7 @@ class UserProfile {
   bool get isPending => accountStatus == 'pending';
   bool get isApproved => accountStatus == 'approved';
   bool get isRejected => accountStatus == 'rejected';
+  bool get isDeleted => accountStatus == 'deleted';
 
   factory UserProfile.fromMap(String uid, Map<String, dynamic> map) {
     return UserProfile(

@@ -29,6 +29,7 @@ class _AuthGateState extends State<AuthGate> {
   /// Onboarding future loaded once in initState so FutureBuilder never
   /// receives a new Future instance on rebuild.
   late final Future<bool> _onboardingFuture;
+  bool _isSigningOutDeletedUser = false;
 
   @override
   void initState() {
@@ -113,6 +114,31 @@ class _AuthGateState extends State<AuthGate> {
             final profile = profileSnapshot.data;
             if (profile == null) {
               return const ProfileCreationScreen(canGoBack: false);
+            }
+
+            if (profile.isDeleted) {
+              if (!_isSigningOutDeletedUser) {
+                _isSigningOutDeletedUser = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  await FirebaseAuth.instance.signOut();
+                  if (mounted) {
+                    setState(() {
+                      _isSigningOutDeletedUser = false;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'This account has been deleted and can no longer be used.',
+                        ),
+                      ),
+                    );
+                  }
+                });
+              }
+
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
             }
 
             // Check account approval status

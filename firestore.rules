@@ -25,25 +25,26 @@ service cloud.firestore {
 
     // Swipes subcollection - track likes/passes
     match /users/{userId}/swipes/{targetUserId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) 
         && request.resource.data.keys().hasAll(['direction', 'createdAt'])
         && request.resource.data.direction in ['like', 'nope', 'superlike'];
-      allow update, delete: if false; // Swipes are immutable
+      allow update: if false;
+      allow delete: if isAdmin(); // Admin cleanup only
     }
 
     // Blocks subcollection
     match /users/{userId}/blocks/{blockedUserId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // FCM tokens subcollection
     match /users/{userId}/fcmTokens/{token} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
       allow create, update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // Matches collection - participants can create on mutual like, read/update own
@@ -64,23 +65,24 @@ service cloud.firestore {
 
     // Messages subcollection - participants can read and create messages
     match /conversations/{conversationId}/messages/{messageId} {
-      allow read: if isAuthenticated() 
-        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]);
+      allow read: if isAdmin() || (isAuthenticated() 
+        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]));
       
-      allow create: if isAuthenticated()
+      allow create: if (isAuthenticated()
         && (request.resource.data.senderId == request.auth.uid || request.resource.data.senderId == 'system')
-        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]);
+        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid])) || isAdmin();
       
-      allow update, delete: if false; // Messages are immutable
+      allow update: if false;
+      allow delete: if isAdmin(); // Admin cleanup only
     }
 
     // Read receipts subcollection
     match /conversations/{conversationId}/reads/{userId} {
-      allow read: if isAuthenticated()
-        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]);
-      allow create, update: if isOwner(userId)
-        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]);
-      allow delete: if false;
+      allow read: if isAdmin() || (isAuthenticated()
+        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]));
+      allow create, update: if isAdmin() || (isOwner(userId)
+        && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]));
+      allow delete: if isAdmin();
     }
 
     // Reports collection - admin can read/update
@@ -122,9 +124,11 @@ service cloud.firestore {
     }
 
     // Forum comments
-    match /forumPosts/{postId}/comments/{commentId} {
-      allow read: if isAuthenticated() && (resource.data.isHidden != true) || isAdmin();
-      allow create: if isAuthenticated() && request.resource.data.authorUid == request.auth.uid;
+    // Use a recursive wildcard so collectionGroup('comments') queries used by
+    // admin moderation are authorized correctly.
+    match /{path=**}/comments/{commentId} {
+      allow read: if isAdmin() || (isAuthenticated() && (resource.data.isHidden != true));
+      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.authorUid == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -139,12 +143,13 @@ service cloud.firestore {
 
     // Study group messages subcollection
     match /studyGroups/{groupId}/messages/{messageId} {
-      allow read: if isAuthenticated()
-        && get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members.hasAny([request.auth.uid]);
-      allow create: if isAuthenticated()
+      allow read: if isAdmin() || (isAuthenticated()
+        && get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members.hasAny([request.auth.uid]));
+      allow create: if (isAuthenticated()
         && request.resource.data.senderUid == request.auth.uid
-        && get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members.hasAny([request.auth.uid]);
-      allow update, delete: if false;
+        && get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members.hasAny([request.auth.uid])) || isAdmin();
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // Academic structure - admin managed
@@ -159,11 +164,11 @@ service cloud.firestore {
     // User A's device writes the notification doc for User B).
     // Read / update / delete are restricted to the notification's owner.
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.uid is string
-                    && request.resource.data.uid.size() > 0;
-      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.uid is string
+                    && request.resource.data.uid.size() > 0);
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
     }
   }
 }

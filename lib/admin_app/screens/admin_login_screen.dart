@@ -215,7 +215,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Default: admin / academe_admin_2026',
+                              'Hardcoded: admin / academe_admin_2026',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.amber[800],

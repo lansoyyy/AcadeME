@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 
 /// Admin Analytics Service
 /// Provides analytics data for admin dashboard
@@ -9,7 +10,7 @@ class AdminAnalyticsService {
   /// Combines multiple Firestore streams into a single analytics summary
   Stream<AnalyticsSummary> streamAnalyticsSummary() {
     // Combine streams for total users, matches, and other stats
-    return Rx.combineLatest4(
+    return CombineLatestStream.combine4(
       _streamTotalUsers(),
       _streamTotalMatches(),
       _streamPendingRegistrations(),
@@ -311,47 +312,6 @@ class AdminAnalyticsService {
             );
           }).toList();
         });
-  }
-}
-
-// Helper class for combining streams
-class Rx {
-  static Stream<T> combineLatest4<A, B, C, D, T>(
-    Stream<A> streamA,
-    Stream<B> streamB,
-    Stream<C> streamC,
-    Stream<D> streamD,
-    T Function(A, B, C, D) combiner,
-  ) async* {
-    A? latestA;
-    B? latestB;
-    C? latestC;
-    D? latestD;
-
-    await for (final value in streamA) {
-      latestA = value;
-      if (latestB != null && latestC != null && latestD != null) {
-        yield combiner(latestA!, latestB!, latestC!, latestD!);
-      }
-    }
-    await for (final value in streamB) {
-      latestB = value;
-      if (latestA != null && latestC != null && latestD != null) {
-        yield combiner(latestA!, latestB!, latestC!, latestD!);
-      }
-    }
-    await for (final value in streamC) {
-      latestC = value;
-      if (latestA != null && latestB != null && latestD != null) {
-        yield combiner(latestA!, latestB!, latestC!, latestD!);
-      }
-    }
-    await for (final value in streamD) {
-      latestD = value;
-      if (latestA != null && latestB != null && latestC != null) {
-        yield combiner(latestA!, latestB!, latestC!, latestD!);
-      }
-    }
   }
 }
 

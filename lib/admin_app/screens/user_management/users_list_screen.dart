@@ -242,7 +242,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
       if (!mounted) {
         return;
       }
-
+print(error);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete account: $error')),
       );

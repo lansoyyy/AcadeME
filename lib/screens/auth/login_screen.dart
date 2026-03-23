@@ -1,7 +1,6 @@
 import 'package:academe/admin_app/screens/admin_login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import '../../services/auth_service.dart';
 import '../../utils/colors.dart';
 import '../../utils/constants.dart';
@@ -23,9 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscure = true;
   bool _isResettingPassword = false;
-
-  // Show admin panel link in debug mode
-  bool get _showAdminLink => kDebugMode;
 
   @override
   void dispose() {
